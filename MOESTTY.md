@@ -52,11 +52,16 @@ is in another window, the move only moves the current tab. "This tab and
 everything to its right" is mark, cmd+9, move, so no separate range action
 is needed.
 
-Moving can follow `move_tab_to_new_window`,
-`TerminalController.newWindow(tree:)`, and the `detachSurface` /
-`moveTabToSplit` patterns in `TerminalController.swift` and
-`BaseTerminalController.swift`. Before building, check which tab ends up
-focused and whether focus stays in the source window.
+Moving is regrouping windows, not rebuilding surface trees: each tab is
+its own `NSWindow`. `move_tab_to_new_window` (`Ghostty.App.swift`) just
+calls AppKit's `NSWindow.moveTabToNewWindow(nil)`. For a range, call that
+on the first tab, then `addTabbedWindow(_:ordered:)` to attach the rest
+to the new window in order. Moving to an existing window is the same
+`addTabbedWindow` step with a different target.
+
+Focus: after AppKit's `moveTabToNewWindow`, the new window comes to the
+front with focus (seen 2026-10-11). Keep that for the range move, so
+chrismo lands in the new window, ready to name it.
 
 ### Move marked tabs to an existing window
 
