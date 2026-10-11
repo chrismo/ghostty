@@ -419,7 +419,9 @@ class TerminalController: BaseTerminalController, TabGroupCloseCoordinator.Contr
     static func newTab(
         _ ghostty: Ghostty.App,
         from parent: NSWindow? = nil,
-        withBaseConfig baseConfig: Ghostty.SurfaceConfiguration? = nil
+        withBaseConfig baseConfig: Ghostty.SurfaceConfiguration? = nil,
+        tree: SplitTree<Ghostty.SurfaceView>? = nil,
+        confirmUndo: Bool = true
     ) -> TerminalController? {
         // Making sure that we're dealing with a TerminalController. If not,
         // then we just create a new window.
@@ -442,7 +444,7 @@ class TerminalController: BaseTerminalController, TabGroupCloseCoordinator.Contr
         }
 
         // Create a new window and add it to the parent
-        let controller = TerminalController.init(ghostty, withBaseConfig: baseConfig)
+        let controller = TerminalController.init(ghostty, withBaseConfig: baseConfig, withSurfaceTree: tree)
         controller.isBackgroundOpaque = parentController.isBackgroundOpaque
         guard let window = controller.window else { return controller }
 
@@ -532,7 +534,11 @@ class TerminalController: BaseTerminalController, TabGroupCloseCoordinator.Contr
             ) { target in
                 // Close the tab when undoing
                 undoManager.disableUndoRegistration {
-                    target.closeTab(nil)
+                    if confirmUndo {
+                        target.closeTab(nil)
+                    } else {
+                        target.closeTabImmediately()
+                    }
                 }
 
                 // Register redo action
@@ -543,7 +549,9 @@ class TerminalController: BaseTerminalController, TabGroupCloseCoordinator.Contr
                     _ = TerminalController.newTab(
                         ghostty,
                         from: parent,
-                        withBaseConfig: baseConfig)
+                        withBaseConfig: baseConfig,
+                        tree: tree,
+                        confirmUndo: confirmUndo)
                 }
             }
         }
@@ -552,6 +560,24 @@ class TerminalController: BaseTerminalController, TabGroupCloseCoordinator.Contr
     }
 
     // MARK: - Methods
+
+    func moveSplitToNewTab(_ target: Ghostty.SurfaceView) -> Bool {
+        guard let window else { return false }
+
+        // newTab refuses in non-native fullscreen, which would orphan the
+        // already-detached split.
+        if let fullscreenStyle, fullscreenStyle.isFullscreen && !fullscreenStyle.supportsTabs {
+            return false
+        }
+
+        return detachSurface(target) { newTree in
+            _ = TerminalController.newTab(
+                ghostty,
+                from: window,
+                tree: newTree,
+                confirmUndo: false)
+        }
+    }
 
     @objc private func ghosttyConfigDidChange(_ notification: Notification) {
         // Get our managed configuration object out

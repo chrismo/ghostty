@@ -447,6 +447,12 @@ fn actionCommands(action: Action.Key) []const Command {
             .description = i18n.N_("Move the current tab to a new window."),
         }},
 
+        .move_split_to_new_tab => comptime &.{.{
+            .action = .move_split_to_new_tab,
+            .title = i18n.N_("Move Split to New Tab"),
+            .description = i18n.N_("Move the focused split into a new tab."),
+        }},
+
         .toggle_tab_overview => comptime &.{.{
             .action = .toggle_tab_overview,
             .title = i18n.N_("Toggle Tab Overview"),

@@ -590,6 +590,12 @@ pub const Action = union(enum) {
     /// Move a tab to a new window.
     move_tab_to_new_window,
 
+    /// Move the focused split out of its tab and into a new tab of its
+    /// own. Does nothing if the tab only has one split.
+    ///
+    /// Only implemented on macOS.
+    move_split_to_new_tab,
+
     /// Toggle the tab overview.
     ///
     /// This is only supported on Linux and when the system's libadwaita
@@ -1450,6 +1456,7 @@ pub const Action = union(enum) {
             .goto_tab,
             .move_tab,
             .move_tab_to_new_window,
+            .move_split_to_new_tab,
             .toggle_tab_overview,
             .new_split,
             .goto_split,
@@ -3362,6 +3369,14 @@ test "parse: action no parameters" {
         try parseSingle("a=ignore"),
     );
     try testing.expectError(Error.InvalidFormat, parseSingle("a=ignore:A"));
+}
+
+test "parse: move_split_to_new_tab" {
+    const testing = std.testing;
+
+    const binding = try parseSingle("a=move_split_to_new_tab");
+    try testing.expect(binding.action == .move_split_to_new_tab);
+    try testing.expectEqual(Action.Scope.surface, binding.action.scope());
 }
 
 test "parse: action with string" {
