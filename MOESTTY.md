@@ -5,15 +5,17 @@ the `fork` remote and rebased onto upstream `main`.
 
 Build: `zig build` (needs Zig 0.16.x), then run `zig-out/Ghostty.app`.
 
+Install as the daily app: `zig build -Doptimize=ReleaseFast`, then replace
+`/Applications/Ghostty.app` with `zig-out/Ghostty.app`. This gives up the
+official app's auto-updates.
+
 ## Added keybind actions
 
 - `move_split_to_new_tab`: move the focused split into a new tab next to
   the current one.
-
-## Planned
-
-- `move_tab_to_split`: move the current tab into the tab on its left as a
-  split.
+- `move_tab_to_split`: move the current tab, with all its splits, into the
+  tab on its left (or on its right, from the first tab) as a split to the
+  right of that tab's focused split.
 
 ## Known bugs (not planned)
 
