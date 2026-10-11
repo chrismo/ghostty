@@ -5,9 +5,16 @@ the `fork` remote and rebased onto upstream `main`.
 
 Build: `zig build` (needs Zig 0.16.x), then run `zig-out/Ghostty.app`.
 
-Install as the daily app: `zig build -Doptimize=ReleaseFast`, then replace
-`/Applications/Ghostty.app` with `zig-out/Ghostty.app`. This gives up the
-official app's auto-updates.
+Install as the daily app: `zig build -Doptimize=ReleaseFast`, remove
+`/Applications/Ghostty.app`, and copy `zig-out/Ghostty.app` to
+`/Applications/Moestty.app`. This gives up the official app's auto-updates.
+
+The build still produces `Ghostty.app`, because renaming the product means
+many edits to the Xcode project file, which conflict on rebase. The app
+shows up as Moestty (Finder, Dock, Cmd+Tab, menu bar) only when the bundle
+is named `Moestty.app`. The bundle ID and the `ghostty` executable are
+unchanged, so the CLI, shell integration, permissions, and settings carry
+over.
 
 ## Added keybind actions
 
