@@ -110,6 +110,12 @@ objects; `new window`, `new tab`, `split` and `select tab` commands; and
 The build order follows the dependencies: mark and move, then named
 windows, then palette targets and AppleScript.
 
+## Editor ideas
+
+- JetBrains has no first-party Zig support; to try it, use CLion (debugger
+  built in) with the third-party ZigBrains plugin and a ZLS matching the
+  pinned Zig version. Untested. Swift in `macos/` still needs Xcode.
+
 ## Known bugs (not planned)
 
 - Dragging a split onto the desktop doesn't open it in a new window unless it
