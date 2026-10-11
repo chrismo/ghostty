@@ -623,6 +623,9 @@ extension Ghostty {
             case GHOSTTY_ACTION_MOVE_TAB_TO_NEW_WINDOW:
                 return moveTabToNewWindow(app, target: target)
 
+            case GHOSTTY_ACTION_MOVE_SPLIT_TO_NEW_TAB:
+                return moveSplitToNewTab(app, target: target)
+
             case GHOSTTY_ACTION_GOTO_TAB:
                 return gotoTab(app, target: target, tab: action.action.goto_tab)
 
@@ -1315,6 +1318,26 @@ extension Ghostty {
                 }
 
                 return true
+        }
+
+        private static func moveSplitToNewTab(
+            _ app: ghostty_app_t,
+            target: ghostty_target_s) -> Bool {
+                switch target.tag {
+                case GHOSTTY_TARGET_APP:
+                    Ghostty.logger.warning("move split to new tab does nothing with an app target")
+                    return false
+
+                case GHOSTTY_TARGET_SURFACE:
+                    guard let surface = target.target.surface else { return false }
+                    guard let surfaceView = self.surfaceView(from: surface) else { return false }
+                    guard let controller = surfaceView.window?.windowController as? TerminalController else { return false }
+                    return controller.moveSplitToNewTab(surfaceView)
+
+                default:
+                    assertionFailure()
+                    return false
+                }
         }
 
         private static func gotoTab(

@@ -808,11 +808,25 @@ class BaseTerminalController: NSWindowController,
 
     @objc private func ghosttySurfaceDragEndedNoTarget(_ notification: Notification) {
         guard let target = notification.object as? Ghostty.SurfaceView else { return }
-        guard let targetNode = surfaceTree.root?.node(view: target) else { return }
+        detachSurface(target) { newTree in
+            _ = TerminalController.newWindow(
+                ghostty,
+                tree: newTree,
+                position: notification.userInfo?[Notification.Name.ghosttySurfaceDragEndedNoTargetPointKey] as? NSPoint,
+                confirmUndo: false,
+                inheritBackgroundOpacity: isBackgroundOpaque)
+        }
+    }
 
-        // If our tree isn't split, then we never create a new window, because
-        // it is already a single split.
-        guard surfaceTree.isSplit else { return }
+    /// Removes `target` from our tree and hands it to `place` as its own
+    /// tree, as a single undo step. Returns false if our tree isn't split.
+    @discardableResult
+    func detachSurface(
+        _ target: Ghostty.SurfaceView,
+        place: (SplitTree<Ghostty.SurfaceView>) -> Void
+    ) -> Bool {
+        guard surfaceTree.isSplit else { return false }
+        guard let targetNode = surfaceTree.root?.node(view: target) else { return false }
 
         // If we are removing our focused surface then we move it. We need to
         // keep track of our old one so undo sends focus back to the right place.
@@ -821,13 +835,8 @@ class BaseTerminalController: NSWindowController,
             focusedSurface = findNextFocusTargetAfterClosing(node: targetNode)
         }
 
-        // Remove the surface from our tree
         let removedTree = surfaceTree.removing(targetNode)
 
-        // Create a new tree with the dragged surface and open a new window
-        let newTree = SplitTree<Ghostty.SurfaceView>(view: target)
-
-        // Treat our undo below as a full group.
         undoManager?.beginUndoGrouping()
         undoManager?.setActionName("Move Split")
         defer {
@@ -835,12 +844,8 @@ class BaseTerminalController: NSWindowController,
         }
 
         replaceSurfaceTree(removedTree, moveFocusFrom: oldFocusedSurface)
-        _ = TerminalController.newWindow(
-            ghostty,
-            tree: newTree,
-            position: notification.userInfo?[Notification.Name.ghosttySurfaceDragEndedNoTargetPointKey] as? NSPoint,
-            confirmUndo: false,
-            inheritBackgroundOpacity: isBackgroundOpaque)
+        place(SplitTree<Ghostty.SurfaceView>(view: target))
+        return true
     }
 
     // MARK: Local Events
