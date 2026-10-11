@@ -24,6 +24,34 @@ over.
   tab on its left (or on its right, from the first tab) as a split to the
   right of that tab's focused split.
 
+## Planned
+
+- Move several tabs to their own window. chrismo's original idea was to
+  multi-select tabs and then move them. Native macOS tabs
+  (`NSWindowTabGroup`) have no multi-select, so that needs Moestty's own
+  "marked tabs" state plus a visible marker in the tab bar, which is the
+  hard part. A cheaper alternative with no selection state is a range
+  action, e.g. `move_tabs_right_to_new_window` (this tab and everything to
+  its right). The moving part can follow the existing
+  `move_tab_to_new_window` action, `TerminalController.newWindow(tree:)`,
+  and the `detachSurface` / `moveTabToSplit` patterns in
+  `TerminalController.swift` and `BaseTerminalController.swift`. Decide
+  between multi-select and a range before building.
+
+## Open issues
+
+- agent-rig scripts Ghostty by app name (`tell application "Ghostty"`,
+  most importantly in `tab-status/tab-status`, the tab-title hook). Once
+  the app is installed only as `Moestty.app`, those lookups may fail. The
+  fix belongs in agent-rig: use `application id "com.mitchellh.ghostty"`.
+  Do this before installing Moestty.
+- Tab titles can go stale after moves. tab-status sets a tab-level title
+  override. After `move_split_to_new_tab`, the old tab keeps the moved
+  session's title, and after `move_tab_to_split`, the moved session's
+  title is hidden by the destination tab's override. Both fix themselves
+  at the next hook. Possible fix: have the move actions clear or carry the
+  tab title override. Not designed yet.
+
 ## Known bugs (not planned)
 
 - Dragging a split onto the desktop doesn't open it in a new window unless it
