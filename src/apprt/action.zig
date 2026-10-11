@@ -370,6 +370,13 @@ pub const Action = union(Key) {
     /// Move a tab into a neighboring tab as a split.
     move_tab_to_split,
 
+    /// Mark the current tab as one end of a range of tabs.
+    mark_tab,
+
+    /// Move the range of tabs between the mark and the current tab to a
+    /// new window.
+    move_marked_tabs_to_new_window,
+
     /// Sync with: ghostty_action_tag_e
     pub const Key = enum(c_int) {
         quit,
@@ -444,6 +451,8 @@ pub const Action = union(Key) {
         resize_window,
         move_split_to_new_tab,
         move_tab_to_split,
+        mark_tab,
+        move_marked_tabs_to_new_window,
 
         test "ghostty.h Action.Key" {
             try lib.checkGhosttyHEnum(Key, "GHOSTTY_ACTION_");

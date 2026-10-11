@@ -5476,6 +5476,18 @@ pub fn performBindingAction(self: *Surface, action: input.Binding.Action) !bool 
             {},
         ),
 
+        .mark_tab => return try self.rt_app.performAction(
+            .{ .surface = self },
+            .mark_tab,
+            {},
+        ),
+
+        .move_marked_tabs_to_new_window => return try self.rt_app.performAction(
+            .{ .surface = self },
+            .move_marked_tabs_to_new_window,
+            {},
+        ),
+
         .new_split => |direction| return try self.rt_app.performAction(
             .{ .surface = self },
             .new_split,

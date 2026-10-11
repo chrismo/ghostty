@@ -1018,6 +1018,8 @@ typedef enum {
   GHOSTTY_ACTION_RESIZE_WINDOW,
   GHOSTTY_ACTION_MOVE_SPLIT_TO_NEW_TAB,
   GHOSTTY_ACTION_MOVE_TAB_TO_SPLIT,
+  GHOSTTY_ACTION_MARK_TAB,
+  GHOSTTY_ACTION_MOVE_MARKED_TABS_TO_NEW_WINDOW,
 } ghostty_action_tag_e;
 
 typedef union {
@@ -1038,6 +1040,7 @@ typedef union {
   ghostty_action_desktop_notification_s desktop_notification;
   ghostty_action_set_title_s set_title;
   ghostty_action_set_title_s set_tab_title;
+  ghostty_action_set_title_s set_window_title;
   ghostty_action_prompt_title_e prompt_title;
   ghostty_action_pwd_s pwd;
   ghostty_action_mouse_shape_e mouse_shape;
