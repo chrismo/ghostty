@@ -43,13 +43,19 @@ final class ScriptWindow: NSObject {
         return stableID
     }
 
-    /// Exposed as the AppleScript `title` property.
-    ///
-    /// Returns the title of the window (from the selected/primary controller's NSWindow).
+    /// Exposed as the AppleScript `name` property.
     @objc(title)
     var title: String {
-        guard NSApp.isAppleScriptEnabled else { return "" }
-        return selectedController?.window?.title ?? ""
+        get {
+            guard NSApp.isAppleScriptEnabled else { return "" }
+            guard let window = selectedController?.window else { return "" }
+            return WindowNames.name(for: window) ?? window.title
+        }
+        set {
+            guard NSApp.isAppleScriptEnabled else { return }
+            guard let window = preferredParentWindow else { return }
+            WindowNames.setName(newValue, for: window)
+        }
     }
 
     /// Exposed as the AppleScript `tabs` element.

@@ -79,7 +79,7 @@ struct TerminalCommandPaletteView: View {
         // Sort the rest. We replace ":" with a character that sorts before space
         // so that "Foo:" sorts before "Foo Bar:". Use sortKey as a tie-breaker
         // for stable ordering when titles are equal.
-        options.append(contentsOf: sortedTerminalPaletteOptions(jumpOptions + terminalOptions))
+        options.append(contentsOf: sortedTerminalPaletteOptions(jumpOptions + moveOptions + terminalOptions))
         return options
     }
 
@@ -139,6 +139,26 @@ struct TerminalCommandPaletteView: View {
                     onAction(c.action)
                 }
             }
+    }
+
+    /// Moving to a new window is the move_marked_tabs_to_new_window entry.
+    private var moveOptions: [CommandOption] {
+        guard let source = surfaceView.window?.windowController as? TerminalController,
+              let sourceGroup = source.window?.tabGroup else { return [] }
+
+        var seen: Set<ObjectIdentifier> = [ObjectIdentifier(sourceGroup)]
+        return TerminalController.all.compactMap { controller -> CommandOption? in
+            guard let window = controller.window, let group = window.tabGroup,
+                  seen.insert(ObjectIdentifier(group)).inserted else { return nil }
+
+            return CommandOption(
+                title: "Move Marked Tabs to: \(WindowNames.label(for: window))",
+                leadingIcon: "rectangle.portrait.and.arrow.right",
+                sortKey: ObjectIdentifier(group)
+            ) {
+                source.moveMarkedTabs(to: window)
+            }
+        }
     }
 
     /// Commands for jumping to other terminal surfaces.

@@ -629,6 +629,12 @@ extension Ghostty {
             case GHOSTTY_ACTION_MOVE_TAB_TO_SPLIT:
                 return moveTabToSplit(app, target: target)
 
+            case GHOSTTY_ACTION_MARK_TAB:
+                return markTab(app, target: target)
+
+            case GHOSTTY_ACTION_MOVE_MARKED_TABS_TO_NEW_WINDOW:
+                return moveMarkedTabsToNewWindow(app, target: target)
+
             case GHOSTTY_ACTION_GOTO_TAB:
                 return gotoTab(app, target: target, tab: action.action.goto_tab)
 
@@ -664,6 +670,9 @@ extension Ghostty {
 
             case GHOSTTY_ACTION_SET_TAB_TITLE:
                 return setTabTitle(app, target: target, v: action.action.set_tab_title)
+
+            case GHOSTTY_ACTION_SET_WINDOW_TITLE:
+                return setWindowTitle(app, target: target, v: action.action.set_window_title)
 
             case GHOSTTY_ACTION_PROMPT_TITLE:
                 return promptTitle(app, target: target, v: action.action.prompt_title)
@@ -1363,6 +1372,47 @@ extension Ghostty {
                 }
         }
 
+        private static func markTab(
+            _ app: ghostty_app_t,
+            target: ghostty_target_s) -> Bool {
+                switch target.tag {
+                case GHOSTTY_TARGET_APP:
+                    Ghostty.logger.warning("mark tab does nothing with an app target")
+                    return false
+
+                case GHOSTTY_TARGET_SURFACE:
+                    guard let surface = target.target.surface else { return false }
+                    guard let surfaceView = self.surfaceView(from: surface) else { return false }
+                    guard let controller = surfaceView.window?.windowController as? TerminalController else { return false }
+                    controller.toggleTabMark()
+                    return true
+
+                default:
+                    assertionFailure()
+                    return false
+                }
+        }
+
+        private static func moveMarkedTabsToNewWindow(
+            _ app: ghostty_app_t,
+            target: ghostty_target_s) -> Bool {
+                switch target.tag {
+                case GHOSTTY_TARGET_APP:
+                    Ghostty.logger.warning("move marked tabs does nothing with an app target")
+                    return false
+
+                case GHOSTTY_TARGET_SURFACE:
+                    guard let surface = target.target.surface else { return false }
+                    guard let surfaceView = self.surfaceView(from: surface) else { return false }
+                    guard let controller = surfaceView.window?.windowController as? TerminalController else { return false }
+                    return controller.moveMarkedTabs(to: nil)
+
+                default:
+                    assertionFailure()
+                    return false
+                }
+        }
+
         private static func gotoTab(
             _ app: ghostty_app_t,
             target: ghostty_target_s,
@@ -1909,6 +1959,30 @@ extension Ghostty {
             }
         }
 
+        private static func setWindowTitle(
+            _ app: ghostty_app_t,
+            target: ghostty_target_s,
+            v: ghostty_action_set_title_s
+        ) -> Bool {
+            switch target.tag {
+            case GHOSTTY_TARGET_APP:
+                Ghostty.logger.warning("set window title does nothing with an app target")
+                return false
+
+            case GHOSTTY_TARGET_SURFACE:
+                guard let title = String(cString: v.title!, encoding: .utf8) else { return false }
+                guard let surface = target.target.surface else { return false }
+                guard let surfaceView = self.surfaceView(from: surface) else { return false }
+                guard let window = surfaceView.window else { return false }
+                MainActor.assumeIsolated { WindowNames.setName(title, for: window) }
+                return true
+
+            default:
+                assertionFailure()
+                return false
+            }
+        }
+
         private static func showChildExited(
             _ app: ghostty_app_t,
             target: ghostty_target_s,
@@ -1987,6 +2061,28 @@ extension Ghostty {
                           let controller = window.windowController as? BaseTerminalController
                     else { return false }
                     controller.promptTabTitle()
+                    return true
+
+                default:
+                    assertionFailure()
+                    return false
+                }
+
+            case .window:
+                switch target.tag {
+                case GHOSTTY_TARGET_APP:
+                    guard let window = NSApp.mainWindow ?? NSApp.keyWindow,
+                          let controller = window.windowController as? TerminalController
+                    else { return false }
+                    controller.promptWindowName()
+                    return true
+
+                case GHOSTTY_TARGET_SURFACE:
+                    guard let surface = target.target.surface else { return false }
+                    guard let surfaceView = self.surfaceView(from: surface) else { return false }
+                    guard let controller = surfaceView.window?.windowController as? TerminalController
+                    else { return false }
+                    controller.promptWindowName()
                     return true
 
                 default:

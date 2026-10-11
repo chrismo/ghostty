@@ -920,6 +920,7 @@ class BaseTerminalController: NSWindowController,
 
     private func applyTitleToWindow() {
         guard let window else { return }
+        defer { WindowNames.syncWindowsMenuItem(for: window) }
 
         if let titleOverride {
             window.title = computeTitle(

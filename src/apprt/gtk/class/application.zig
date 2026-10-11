@@ -819,6 +819,8 @@ pub const Application = extern struct {
             .redo,
             .move_split_to_new_tab,
             .move_tab_to_split,
+            .mark_tab,
+            .move_marked_tabs_to_new_window,
             => {
                 log.warn("unimplemented action={}", .{action});
                 return false;

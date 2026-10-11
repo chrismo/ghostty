@@ -15,6 +15,9 @@ extension TerminalRestorableState {
         let effectiveFullscreenMode: FullscreenMode?
         let tabColor: TerminalTabColor?
         let titleOverride: String?
+
+        // MARK: - Moestty
+        let windowName: String?
     }
 }
 
@@ -24,8 +27,9 @@ extension TerminalRestorableState.InternalState where ViewType == Ghostty.Surfac
             focusedSurface: controller.focusedSurface?.id.uuidString,
             surfaceTree: controller.surfaceTree,
             effectiveFullscreenMode: controller.fullscreenStyle?.fullscreenMode,
-            tabColor: (controller.window as? TerminalWindow)?.tabColor,
+            tabColor: MainActor.assumeIsolated { TabMark.restorableTabColor(of: controller) },
             titleOverride: controller.titleOverride,
+            windowName: MainActor.assumeIsolated { controller.window.flatMap { WindowNames.name(for: $0) } },
         )
     }
 }
