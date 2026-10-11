@@ -129,6 +129,30 @@ struct SplitTreeTests {
         #expect(result.contains(.leaf(view: view2)))
     }
 
+    @Test func insertingSubtreeGraftsItWhole() throws {
+        let (source, view2, view3) = try makeHorizontalSplit()
+        let view1 = MockView()
+        let tree = SplitTree<MockView>(view: view1)
+
+        let result = try tree.inserting(node: source.root!, at: view1, direction: .right)
+
+        #expect(result.root == .split(.init(
+            direction: .horizontal,
+            ratio: 0.5,
+            left: .leaf(view: view1),
+            right: source.root!)))
+        #expect(result.contains(.leaf(view: view2)))
+        #expect(result.contains(.leaf(view: view3)))
+    }
+
+    @Test func insertingSubtreeAtMissingViewThrows() throws {
+        let (source, _, _) = try makeHorizontalSplit()
+        let tree = SplitTree<MockView>(view: MockView())
+        #expect(throws: (any Error).self) {
+            try tree.inserting(node: source.root!, at: MockView(), direction: .right)
+        }
+    }
+
     // MARK: - Focus Target
 
     @Test func focusTargetOnEmptyTreeReturnsNil() {

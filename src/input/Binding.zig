@@ -596,6 +596,14 @@ pub const Action = union(enum) {
     /// Only implemented on macOS.
     move_split_to_new_tab,
 
+    /// Move the current tab into a neighboring tab as a split, to the right
+    /// of that tab's focused split. The neighbor is the tab to the left, or
+    /// the tab to the right if this is the first tab. Does nothing if there
+    /// are no other tabs in the window.
+    ///
+    /// Only implemented on macOS.
+    move_tab_to_split,
+
     /// Toggle the tab overview.
     ///
     /// This is only supported on Linux and when the system's libadwaita
@@ -1457,6 +1465,7 @@ pub const Action = union(enum) {
             .move_tab,
             .move_tab_to_new_window,
             .move_split_to_new_tab,
+            .move_tab_to_split,
             .toggle_tab_overview,
             .new_split,
             .goto_split,
@@ -3376,6 +3385,14 @@ test "parse: move_split_to_new_tab" {
 
     const binding = try parseSingle("a=move_split_to_new_tab");
     try testing.expect(binding.action == .move_split_to_new_tab);
+    try testing.expectEqual(Action.Scope.surface, binding.action.scope());
+}
+
+test "parse: move_tab_to_split" {
+    const testing = std.testing;
+
+    const binding = try parseSingle("a=move_tab_to_split");
+    try testing.expect(binding.action == .move_tab_to_split);
     try testing.expectEqual(Action.Scope.surface, binding.action.scope());
 }
 

@@ -819,6 +819,7 @@ pub const Application = extern struct {
             .undo,
             .redo,
             .move_split_to_new_tab,
+            .move_tab_to_split,
             => {
                 log.warn("unimplemented action={}", .{action});
                 return false;

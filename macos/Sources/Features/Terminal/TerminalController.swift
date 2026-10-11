@@ -579,6 +579,38 @@ class TerminalController: BaseTerminalController, TabGroupCloseCoordinator.Contr
         }
     }
 
+    func moveTabToSplit() -> Bool {
+        guard let window,
+              let tabs = window.tabGroup?.windows,
+              let index = tabs.firstIndex(of: window),
+              tabs.count > 1 else { return false }
+        let neighborWindow = tabs[index > 0 ? index - 1 : index + 1]
+        guard let neighbor = neighborWindow.windowController as? TerminalController,
+              let root = surfaceTree.root,
+              let anchor = neighbor.focusedSurface ?? neighbor.surfaceTree.root?.leftmostLeaf()
+        else { return false }
+
+        let newTree: SplitTree<Ghostty.SurfaceView>
+        do {
+            newTree = try neighbor.surfaceTree.inserting(node: root, at: anchor, direction: .right)
+        } catch {
+            Ghostty.logger.warning("failed to insert tab during move: \(error, privacy: .public)")
+            return false
+        }
+
+        let movedFocus = focusedSurface
+        undoManager?.beginUndoGrouping()
+        undoManager?.setActionName("Move Tab")
+        defer {
+            undoManager?.endUndoGrouping()
+        }
+
+        replaceSurfaceTree(.init())
+        neighbor.replaceSurfaceTree(newTree, moveFocusTo: movedFocus, moveFocusFrom: neighbor.focusedSurface)
+        neighborWindow.makeKeyAndOrderFront(nil)
+        return true
+    }
+
     @objc private func ghosttyConfigDidChange(_ notification: Notification) {
         // Get our managed configuration object out
         guard let config = notification.userInfo?[
