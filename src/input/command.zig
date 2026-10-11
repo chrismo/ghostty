@@ -459,6 +459,18 @@ fn actionCommands(action: Action.Key) []const Command {
             .description = i18n.N_("Move the current tab into the neighboring tab as a split."),
         }},
 
+        .mark_tab => comptime &.{.{
+            .action = .mark_tab,
+            .title = i18n.N_("Mark Tab"),
+            .description = i18n.N_("Mark the current tab as one end of a range of tabs to move."),
+        }},
+
+        .move_marked_tabs_to_new_window => comptime &.{.{
+            .action = .move_marked_tabs_to_new_window,
+            .title = i18n.N_("Move Marked Tabs to New Window"),
+            .description = i18n.N_("Move the tabs from the mark to the current tab into a new window."),
+        }},
+
         .toggle_tab_overview => comptime &.{.{
             .action = .toggle_tab_overview,
             .title = i18n.N_("Toggle Tab Overview"),

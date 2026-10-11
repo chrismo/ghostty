@@ -604,6 +604,21 @@ pub const Action = union(enum) {
     /// Only implemented on macOS.
     move_tab_to_split,
 
+    /// Mark the current tab as one end of a range of tabs, shown with a tab
+    /// color. Pressing it on the marked tab clears the mark. There is at most
+    /// one mark across all windows.
+    ///
+    /// Only implemented on macOS.
+    mark_tab,
+
+    /// Move the tabs from the marked tab to the current tab, inclusive and in
+    /// either direction, into a new window, then clear the mark. Without a
+    /// mark in this window, only the current tab moves. Does nothing if that
+    /// would move every tab in the window.
+    ///
+    /// Only implemented on macOS.
+    move_marked_tabs_to_new_window,
+
     /// Toggle the tab overview.
     ///
     /// This is only supported on Linux and when the system's libadwaita
@@ -623,7 +638,8 @@ pub const Action = union(enum) {
     /// title set via this prompt overrides any title set by the terminal
     /// and persists across focus changes within the tab.
     ///
-    /// Only implemented on Linux.
+    /// On macOS this names the window (the whole tab group) instead. The
+    /// name shows in the Window menu and the command palette.
     prompt_window_title,
 
     /// Set the title for the current focused surface.
@@ -640,7 +656,8 @@ pub const Action = union(enum) {
     ///
     /// If the title is empty, the tab title override is cleared.
     ///
-    /// Only implement on Linux.
+    /// On macOS this names the window (the whole tab group) instead, and an
+    /// empty title clears the name.
     set_window_title: []const u8,
 
     /// Create a new split in the specified direction.
@@ -1466,6 +1483,8 @@ pub const Action = union(enum) {
             .move_tab_to_new_window,
             .move_split_to_new_tab,
             .move_tab_to_split,
+            .mark_tab,
+            .move_marked_tabs_to_new_window,
             .toggle_tab_overview,
             .new_split,
             .goto_split,
@@ -3393,6 +3412,22 @@ test "parse: move_tab_to_split" {
 
     const binding = try parseSingle("a=move_tab_to_split");
     try testing.expect(binding.action == .move_tab_to_split);
+    try testing.expectEqual(Action.Scope.surface, binding.action.scope());
+}
+
+test "parse: mark_tab" {
+    const testing = std.testing;
+
+    const binding = try parseSingle("a=mark_tab");
+    try testing.expect(binding.action == .mark_tab);
+    try testing.expectEqual(Action.Scope.surface, binding.action.scope());
+}
+
+test "parse: move_marked_tabs_to_new_window" {
+    const testing = std.testing;
+
+    const binding = try parseSingle("a=move_marked_tabs_to_new_window");
+    try testing.expect(binding.action == .move_marked_tabs_to_new_window);
     try testing.expectEqual(Action.Scope.surface, binding.action.scope());
 }
 

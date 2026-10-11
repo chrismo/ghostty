@@ -171,6 +171,37 @@ final class ScriptTab: NSObject {
         return nil
     }
 
+    /// Handler for `move tab <tab> [to <window>]`.
+    @objc(handleMoveTabCommand:)
+    func handleMoveTab(_ command: NSScriptCommand) -> Any? {
+        guard NSApp.validateScript(command: command) else { return nil }
+
+        guard let tabWindow = parentWindow else {
+            command.scriptErrorNumber = errAEEventFailed
+            command.scriptErrorString = "Tab is no longer available."
+            return nil
+        }
+
+        var targetWindow: NSWindow?
+        if let target = command.evaluatedArguments?["window"] as? ScriptWindow {
+            guard let resolved = target.preferredParentWindow else {
+                command.scriptErrorNumber = errAEEventFailed
+                command.scriptErrorString = "Target window is no longer available."
+                return nil
+            }
+            targetWindow = resolved
+        }
+
+        guard TerminalController.moveTabs([tabWindow], to: targetWindow) else {
+            command.scriptErrorNumber = errAEEventFailed
+            command.scriptErrorString = targetWindow == nil
+                ? "The tab is the only tab in its window."
+                : "The tab is already in that window."
+            return nil
+        }
+        return nil
+    }
+
     /// Provides Cocoa scripting with a canonical "path" back to this object.
     override var objectSpecifier: NSScriptObjectSpecifier? {
         guard NSApp.isAppleScriptEnabled else { return nil }
