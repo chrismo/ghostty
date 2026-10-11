@@ -23,92 +23,63 @@ over.
 - `move_tab_to_split`: move the current tab, with all its splits, into the
   tab on its left (or on its right, from the first tab) as a split to the
   right of that tab's focused split.
+- `mark_tab`: mark the current tab as one end of a range of tabs, shown by
+  coloring it purple. Pressing it on the marked tab clears the mark. There
+  is one mark across all windows.
+- `move_marked_tabs_to_new_window`: move the tabs from the mark to the
+  current tab, inclusive and in either direction, into a new window, then
+  clear the mark. Without a mark in this window, only the current tab
+  moves. Focus follows the moved tabs.
+- `prompt_window_title` / `set_window_title:<name>`: upstream these are
+  Linux-only. On macOS they name the window (the whole tab group); an
+  empty name clears it.
 
-## Planned
+## Tab ranges
 
-### Mark and move a range of tabs
+chrismo orders tabs by priority with shift+cmd+left/right, and over time a
+contiguous group forms that belongs in its own window. To move it: mark
+one end, go to the other end, then move. "This tab and everything to its
+right" is mark, cmd+9, move.
 
-Use case: chrismo orders tabs by priority with shift+cmd+left/right. Over
-time a contiguous group forms, sometimes at an end and sometimes in the
-middle, and should move to its own window, usually a new one. Chrome-style
-shift-click multi-select was ruled out: native tabs (`NSWindowTabGroup`)
-have no multi-select, and building it on AppKit's tab bar is a lot of
-custom UI that would conflict on rebase.
+Chrome-style shift-click multi-select was ruled out: native tabs
+(`NSWindowTabGroup`) have no multi-select, and building it on AppKit's
+tab bar is a lot of custom UI that would conflict on rebase.
 
-Design, a keyboard version of shift-click (like Emacs set-mark):
+Each tab is its own `NSWindow`, so moving tabs regroups windows (AppKit's
+`moveTabToNewWindow`, then `addTabbedWindow`) rather than rebuilding
+surface trees. Code: `macos/Sources/Features/Terminal/TabMark.swift`. The
+mark's color is left out of saved state, so a relaunch doesn't bring back
+a stale purple tab.
 
-1. `mark_tab`: set the mark on the current tab and give it a tab color as
-   the visible marker (`TerminalWindow.tabColor`, already per tab).
-   chrismo doesn't use tab colors otherwise, but restore the previous
-   color when the mark clears anyway. Pressing it on the marked tab clears
-   the mark.
-2. Move to the other end of the group with normal tab navigation.
-3. `move_marked_tabs_to_new_window`: move every tab from the mark to the
-   current tab, inclusive and in either direction, to a new window in
-   their original order. Then clear the mark.
+## Named windows
 
-The mark is a single weak reference to one tab. If that tab is closed or
-is in another window, the move only moves the current tab. "This tab and
-everything to its right" is mark, cmd+9, move, so no separate range action
-is needed.
+AppKit has no title for a tab group, so names live in
+`macos/Sources/Features/Terminal/WindowNames.swift`, keyed by the group.
+A tab that joins a window shares its name; a tab dragged out into a new
+window starts unnamed. Names are saved and restored with the window.
 
-Moving is regrouping windows, not rebuilding surface trees: each tab is
-its own `NSWindow`. `move_tab_to_new_window` (`Ghostty.App.swift`) just
-calls AppKit's `NSWindow.moveTabToNewWindow(nil)`. For a range, call that
-on the first tab, then `addTabbedWindow(_:ordered:)` to attach the rest
-to the new window in order. Moving to an existing window is the same
-`addTabbedWindow` step with a different target.
+Where the name shows:
 
-Focus: after AppKit's `moveTabToNewWindow`, the new window comes to the
-front with focus (seen 2026-10-11). Keep that for the range move, so
-chrismo lands in the new window, ready to name it.
+- Command palette: "Move Marked Tabs to: <window>" for every other window,
+  labelled by name, or by the selected tab's title and tab count when
+  unnamed ("vim (6 tabs)"). It moves the marked range like
+  `move_marked_tabs_to_new_window`, which is also in the palette.
+- Window menu: AppKit lists every tab on its own, so each tab's entry is
+  prefixed with its window's name ("proj-x — vim").
+- Not in the tab bar or title bar.
 
-### Move marked tabs to an existing window
+## AppleScript
 
-The command palette picks the target. `jumpOptions` in
-`TerminalCommandPalette.swift` already builds a "Focus: <title>" entry per
-surface. Add "Move marked tabs to: <window>" entries per window, plus
-"Move marked tabs to: New Window". A window without a name is labelled by
-its focused tab's title plus the tab count, e.g. "vim … (6 tabs)".
+Ghostty's scripting dictionary (`macos/Ghostty.sdef`) already has window,
+tab and terminal objects; `new window`, `new tab`, `split`; and `perform
+action`, which runs any keybind action string. Moestty adds:
 
-### Named windows
+- A window's `name` is writable and names the window. Reading it returns
+  the name, or the selected tab's title when unnamed.
+- `move tab <tab> [to <window>]` moves a tab to the end of another window,
+  or to a new window when `to` is left out.
 
-chrismo groups tabs into windows by topic and wants to name those windows.
-On macOS a window with tabs is an `NSWindowTabGroup` of separate windows
-with no group title, and `prompt_window_title` / `set_window_title` exist
-but are Linux-only (`src/input/Binding.zig`).
-
-- Implement `prompt_window_title` and `set_window_title` on macOS. Store
-  the name on the tab group, and carry it over as tabs move in or out.
-- The command palette is the first place it shows: the name is what
-  chrismo types to pick a move target. Showing it in the tab bar or title
-  bar can come later, if at all.
-- Window menu: Ghostty doesn't customize it (no `changeWindowsItem` or
-  `isExcludedFromWindowsMenu`), so AppKit lists one entry per tab, titled
-  by the tab, in one flat list with nothing showing which window a tab
-  is in (seen 2026-10-11). Prefix each entry with the window name
-  ("proj-x — vim") via `NSApp.changeWindowsItem` so the entries group
-  visibly. Unnamed windows keep plain tab titles.
-- Names are mostly set by hand. Optionally,
-  `move_marked_tabs_to_new_window` prompts for a name for the new window.
-
-### AppleScript for a startup layout
-
-Goal: a startup script that builds chrismo's windows, named and with their
-tabs. Ghostty already has a scripting dictionary (`macos/Ghostty.sdef`,
-`macos/Sources/Features/AppleScript/`) with window, tab and terminal
-objects; `new window`, `new tab`, `split` and `select tab` commands; and
-`perform action`, which runs any keybind action string, so
-`set_tab_title:...` already works. To add:
-
-- A writable window `name` (now read-only, and it returns the selected
-  tab's title), backed by the named-windows storage.
-- A command to move a tab to another window, e.g.
-  `move tab <tab> to window <window>`, for scripts that rearrange tabs
-  rather than build windows.
-
-The build order follows the dependencies: mark and move, then named
-windows, then palette targets and AppleScript.
+So a startup script can build named windows and their tabs.
 
 ## Editor ideas
 
