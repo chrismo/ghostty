@@ -5478,6 +5478,12 @@ pub fn performBindingAction(self: *Surface, action: input.Binding.Action) !bool 
             {},
         ),
 
+        .move_tab_to_split => return try self.rt_app.performAction(
+            .{ .surface = self },
+            .move_tab_to_split,
+            {},
+        ),
+
         .new_split => |direction| return try self.rt_app.performAction(
             .{ .surface = self },
             .new_split,
