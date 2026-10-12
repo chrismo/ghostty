@@ -467,7 +467,7 @@ fn actionCommands(action: Action.Key) []const Command {
 
         .move_marked_tabs_to_new_window => comptime &.{.{
             .action = .move_marked_tabs_to_new_window,
-            .title = i18n.N_("Move Marked Tabs to New Window"),
+            .title = i18n.N_("Move Tabs to New Window"),
             .description = i18n.N_("Move the tabs from the mark to the current tab into a new window."),
         }},
 

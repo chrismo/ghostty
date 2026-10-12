@@ -152,7 +152,7 @@ struct TerminalCommandPaletteView: View {
                   seen.insert(ObjectIdentifier(group)).inserted else { return nil }
 
             return CommandOption(
-                title: "Move Marked Tabs to: \(WindowNames.label(for: window))",
+                title: "Move Tabs to: \(WindowNames.label(for: window))",
                 leadingIcon: "rectangle.portrait.and.arrow.right",
                 sortKey: ObjectIdentifier(group)
             ) {
