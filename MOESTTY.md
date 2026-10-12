@@ -5,9 +5,27 @@ the `fork` remote and rebased onto upstream `main`.
 
 Build: `zig build` (needs Zig 0.16.x), then run `zig-out/Ghostty.app`.
 
-Install as the daily app: `zig build -Doptimize=ReleaseFast`, remove
-`/Applications/Ghostty.app`, and copy `zig-out/Ghostty.app` to
-`/Applications/Moestty.app`. This gives up the official app's auto-updates.
+Install as the daily app, with Moestty quit:
+
+```
+zig build -Doptimize=ReleaseFast
+rm -rf /Applications/Moestty.app && cp -R zig-out/Ghostty.app /Applications/Moestty.app
+LSR=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
+$LSR -u "$PWD/macos/build/ReleaseLocal/Ghostty.app"
+$LSR -u "$PWD/macos/build/Debug/Ghostty.app"
+$LSR -f /Applications/Moestty.app
+```
+
+Xcode registers every app it builds with LaunchServices under the same
+bundle ID, so without the `lsregister` lines, launching by bundle ID (the
+Dock, `open -b`) can start the build-folder copy. That copy shows as
+Ghostty in Cmd+Tab, and the next build overwrites it while it runs.
+The official app is gone and `auto-update = off` in the config, since an
+update would replace Moestty with an official build.
+
+Version: the About window shows the Ghostty version from `build.zig.zon`
+and Moestty's own version, `moestty_version` in
+`src/build/GhosttyXcodebuild.zig`. Both are set only by `zig build`.
 
 The build still produces `Ghostty.app`, because renaming the product means
 many edits to the Xcode project file, which conflict on rebase. The app

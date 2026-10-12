@@ -9,6 +9,8 @@ const I18n = @import("GhosttyI18n.zig");
 const Resources = @import("GhosttyResources.zig");
 const XCFramework = @import("GhosttyXCFramework.zig");
 
+const moestty_version = "0.1";
+
 build: *std.Build.Step.Run,
 open: *std.Build.Step.Run,
 copy: *std.Build.Step.Run,
@@ -69,6 +71,8 @@ pub fn init(
             "Ghostty",
             "-configuration",
             xc_config,
+            "MARKETING_VERSION=" ++ @import("../../build.zig.zon").version,
+            "MOESTTY_VERSION=" ++ moestty_version,
         });
 
         // If we have a specific architecture, we need to pass it
