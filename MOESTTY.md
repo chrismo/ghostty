@@ -60,10 +60,11 @@ window starts unnamed. Names are saved and restored with the window.
 
 Where the name shows:
 
-- Command palette: "Move Marked Tabs to: <window>" for every other window,
+- Command palette: "Move Tabs to: <window>" for every other window,
   labelled by name, or by the selected tab's title and tab count when
-  unnamed ("vim (6 tabs)"). It moves the marked range like
-  `move_marked_tabs_to_new_window`, which is also in the palette.
+  unnamed ("vim (6 tabs)"). It moves the marked range, or just the
+  current tab without a mark, like `move_marked_tabs_to_new_window`
+  ("Move Tabs to New Window" in the palette). Typing "move tab" finds both.
 - Window menu: AppKit lists every tab on its own, so each tab's entry is
   prefixed with its window's name ("proj-x — vim").
 - Not in the tab bar or title bar.
