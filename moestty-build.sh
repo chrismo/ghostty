@@ -11,7 +11,7 @@ lsregister=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchSe
 zig build -Doptimize=ReleaseFast
 
 if pgrep -f "$app/Contents/MacOS/ghostty" >/dev/null; then
-  echo "Built. Quit Moestty, then run this again to install (the rebuild is quick)." >&2
+  echo "Built. Quit Moestty, then run this again to install." >&2
   exit 1
 fi
 
@@ -22,6 +22,7 @@ cp -R zig-out/Ghostty.app "$app"
 # launch that copy instead.
 "$lsregister" -u "$PWD/macos/build/ReleaseLocal/Ghostty.app" || true
 "$lsregister" -u "$PWD/macos/build/Debug/Ghostty.app" || true
+"$lsregister" -u "$PWD/zig-out/Ghostty.app" || true
 "$lsregister" -f "$app"
 
 echo "Installed $app"
