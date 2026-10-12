@@ -5,20 +5,14 @@ the `fork` remote and rebased onto upstream `main`.
 
 Build: `zig build` (needs Zig 0.16.x), then run `zig-out/Ghostty.app`.
 
-Install as the daily app, with Moestty quit:
-
-```
-zig build -Doptimize=ReleaseFast
-rm -rf /Applications/Moestty.app && cp -R zig-out/Ghostty.app /Applications/Moestty.app
-LSR=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
-$LSR -u "$PWD/macos/build/ReleaseLocal/Ghostty.app"
-$LSR -u "$PWD/macos/build/Debug/Ghostty.app"
-$LSR -f /Applications/Moestty.app
-```
+Install as the daily app: `./moestty-build.sh`. It builds ReleaseFast,
+copies the app to `/Applications/Moestty.app` and fixes its LaunchServices
+registration. If Moestty is running it stops after building; quit Moestty
+and run it again.
 
 Xcode registers every app it builds with LaunchServices under the same
-bundle ID, so without the `lsregister` lines, launching by bundle ID (the
-Dock, `open -b`) can start the build-folder copy. That copy shows as
+bundle ID, so without the script's `lsregister` lines, launching by
+bundle ID (the Dock, `open -b`) can start the build-folder copy. That copy shows as
 Ghostty in Cmd+Tab, and the next build overwrites it while it runs.
 The official app is gone and `auto-update = off` in the config, since an
 update would replace Moestty with an official build.
