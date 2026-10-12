@@ -3,13 +3,14 @@ import SwiftUI
 struct AboutView: View {
     @Environment(\.openURL) var openURL
 
-    private let githubURL = URL(string: "https://github.com/ghostty-org/ghostty")
+    private let githubURL = URL(string: "https://github.com/chrismo/ghostty")
     private let docsURL = URL(string: "https://ghostty.org/docs")
 
     /// Read the commit from the bundle.
     private var build: String? { Bundle.main.infoDictionary?["CFBundleVersion"] as? String }
     private var commit: String? { Bundle.main.infoDictionary?["GhosttyCommit"] as? String }
     private var version: String? { Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String }
+    private var moesttyVersion: String? { Bundle.main.infoDictionary?["MoesttyVersion"] as? String }
 
     private enum VersionConfig {
         case stable(version: String)
@@ -78,7 +79,7 @@ struct AboutView: View {
 
             VStack(alignment: .center, spacing: 32) {
                 VStack(alignment: .center, spacing: 8) {
-                    Text("Ghostty")
+                    Text("Moestty")
                         .bold()
                         .font(.title)
                     Text("Fast, native, feature-rich terminal \nemulator pushing modern features.")
@@ -91,13 +92,16 @@ struct AboutView: View {
                 .textSelection(.enabled)
 
                 VStack(spacing: 2) {
+                    if let moesttyVersion, !moesttyVersion.isEmpty {
+                        PropertyRow(label: "Moestty", text: moesttyVersion)
+                    }
                     switch versionConfig {
                     case .stable(let version):
-                        PropertyRow(label: "Version", text: version, url: versionConfig.url)
+                        PropertyRow(label: "Ghostty", text: version, url: versionConfig.url)
                     case .tip:
-                        PropertyRow(label: "Version", text: "Tip Release")
+                        PropertyRow(label: "Ghostty", text: "Tip Release")
                     case .other(let v):
-                        PropertyRow(label: "Version", text: v)
+                        PropertyRow(label: "Ghostty", text: v)
                     case .none:
                         EmptyView()
                     }
