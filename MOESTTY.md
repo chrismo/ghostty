@@ -10,6 +10,18 @@ copies the app to `/Applications/Moestty.app` and fixes its LaunchServices
 registration. If Moestty is running it stops after building; quit Moestty
 and run it again.
 
+Sync with upstream: `./moestty-build.sh sync`. On a clean `moestty`, it
+fetches, picks up anything pushed to `fork/moestty` from the other machine,
+rebases onto `origin/main`, then runs `check`. On a conflict it stops
+mid-rebase and prints the hash to `git reset --hard` back to. It doesn't
+push or install. After it passes, run `git push --force-with-lease fork
+moestty` and `./moestty-build.sh`.
+
+`./moestty-build.sh check` builds ReleaseFast, runs the Zig tests that
+Moestty adds (found by their `test "..."` names in the diff from upstream,
+because the full Zig suite is slow), and runs all the Swift tests except UI
+tests. The Swift tests launch a Debug Ghostty as their host app.
+
 Xcode registers every app it builds with LaunchServices under the same
 bundle ID, so without the script's `lsregister` lines, launching by
 bundle ID (the Dock, `open -b`) can start the build-folder copy. That copy shows as
