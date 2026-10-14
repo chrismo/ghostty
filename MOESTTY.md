@@ -19,7 +19,8 @@ update would replace Moestty with an official build.
 
 Version: the About window shows the Ghostty version from `build.zig.zon`
 and Moestty's own version, `moestty_version` in
-`src/build/GhosttyXcodebuild.zig`. Both are set only by `zig build`.
+`src/build/GhosttyXcodebuild.zig` plus the commit hash. Both are set only
+by `zig build`. `./moestty-build.sh bump [VERSION]` changes the number.
 
 The build still produces `Ghostty.app`, because renaming the product means
 many edits to the Xcode project file, which conflict on rebase. The app
