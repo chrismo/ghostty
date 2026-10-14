@@ -769,6 +769,7 @@ fn actionCommands(action: Action.Key) []const Command {
         .previous_tab,
         .next_tab,
         .last_tab,
+        .move_split,
         => comptime &.{},
 
         // No commands for obvious reasons

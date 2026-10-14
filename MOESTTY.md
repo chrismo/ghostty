@@ -42,6 +42,8 @@ over.
   current tab, inclusive and in either direction, into a new window, then
   clear the mark. Without a mark in this window, only the current tab
   moves. Focus follows the moved tabs.
+- `move_split:left|right|up|down`: move the focused split
+  within its tab, like dragging it. See "Moving splits".
 - `prompt_window_title` / `set_window_title:<name>`: upstream these are
   Linux-only. On macOS they name the window (the whole tab group); an
   empty name clears it.
@@ -62,6 +64,32 @@ Each tab is its own `NSWindow`, so moving tabs regroups windows (AppKit's
 surface trees. Code: `macos/Sources/Features/Terminal/TabMark.swift`. The
 mark's color is left out of saved state, so a relaunch doesn't bring back
 a stale purple tab.
+
+## Moving splits
+
+Dragging a split onto half of another split moves it there, but upstream
+has no keyboard equivalent. `move_split` highlights the same halves the
+drag does, for as long as the binding's modifiers stay held. A direction
+turns to another half of the highlighted split, or, when the highlight is
+already on that side, steps to the near half of the next split over.
+Releasing the modifiers moves the split through the same code path as a
+same-window drop. Stepping back onto the split being moved clears the
+highlight, so releasing there cancels, like dropping a drag where it
+started. A half that wouldn't change the layout is still offered, just
+like the drag.
+
+    keybind = super+alt+shift+left=move_split:left
+    (same for up, down, right)
+
+The core never fires bindings on key release, so the window controller
+watches `flagsChanged` for the release, using the modifiers held at the
+first press. A binding without modifiers moves immediately. Move mode is
+cancelled when focus moves to another split, the window resigns key, or
+the tree changes underneath it. Starting move mode unzooms a zoomed split.
+
+Earlier versions swapped whole splits (which keeps the layout's shape but
+can never change it) and used a sticky key table with enter/escape. Both
+were dropped in favor of matching the drag.
 
 ## Named windows
 

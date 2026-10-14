@@ -27,6 +27,7 @@ enum TerminalSplitOperation {
 
 struct TerminalSplitTreeView: View {
     let tree: SplitTree<Ghostty.SurfaceView>
+    var moveDestination: SplitTree<Ghostty.SurfaceView>.MoveDestination?
     let action: (TerminalSplitOperation) -> Void
 
     var body: some View {
@@ -34,6 +35,7 @@ struct TerminalSplitTreeView: View {
             TerminalSplitSubtreeView(
                 node: node,
                 isRoot: node == tree.root,
+                moveDestination: moveDestination,
                 action: action)
             // This is necessary because we can't rely on SwiftUI's implicit
             // structural identity to detect changes to this view. Due to
@@ -49,12 +51,19 @@ private struct TerminalSplitSubtreeView: View {
 
     let node: SplitTree<Ghostty.SurfaceView>.Node
     var isRoot: Bool = false
+    var moveDestination: SplitTree<Ghostty.SurfaceView>.MoveDestination?
     let action: (TerminalSplitOperation) -> Void
 
     var body: some View {
         switch node {
         case .leaf(let leafView):
-            TerminalSplitLeaf(surfaceView: leafView, isSplit: !isRoot, action: action)
+            TerminalSplitLeaf(
+                surfaceView: leafView,
+                isSplit: !isRoot,
+                moveZone: moveDestination.flatMap {
+                    $0.view === leafView ? TerminalSplitDropZone($0.direction) : nil
+                },
+                action: action)
 
         case .split(let split):
             let splitViewDirection: SplitViewDirection = switch split.direction {
@@ -72,10 +81,10 @@ private struct TerminalSplitSubtreeView: View {
                 dividerColor: ghostty.config.splitDividerColor,
                 resizeIncrements: .init(width: 1, height: 1),
                 left: {
-                    TerminalSplitSubtreeView(node: split.left, action: action)
+                    TerminalSplitSubtreeView(node: split.left, moveDestination: moveDestination, action: action)
                 },
                 right: {
-                    TerminalSplitSubtreeView(node: split.right, action: action)
+                    TerminalSplitSubtreeView(node: split.right, moveDestination: moveDestination, action: action)
                 },
                 onEqualize: {
                     guard let surface = node.leftmostLeaf().surface else { return }
@@ -89,6 +98,7 @@ private struct TerminalSplitSubtreeView: View {
 private struct TerminalSplitLeaf: View {
     let surfaceView: Ghostty.SurfaceView
     let isSplit: Bool
+    let moveZone: TerminalSplitDropZone?
     let action: (TerminalSplitOperation) -> Void
 
     @State private var dropState: DropState = .idle
@@ -116,6 +126,9 @@ private struct TerminalSplitLeaf: View {
             .overlay {
                 if !isSelfDragging, case .dropping(let zone) = dropState {
                     zone.overlay(in: geometry)
+                        .allowsHitTesting(false)
+                } else if let moveZone {
+                    moveZone.overlay(in: geometry)
                         .allowsHitTesting(false)
                 }
             }
@@ -217,6 +230,15 @@ enum TerminalSplitDropZone: String, Equatable {
         if minDist == distToRight { return .right }
         if minDist == distToTop { return .top }
         return .bottom
+    }
+
+    init(_ direction: SplitTree<Ghostty.SurfaceView>.NewDirection) {
+        self = switch direction {
+        case .up: .top
+        case .down: .bottom
+        case .left: .left
+        case .right: .right
+        }
     }
 
     @ViewBuilder

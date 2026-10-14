@@ -35,6 +35,9 @@ protocol TerminalViewModel: ObservableObject {
 
     /// The update overlay should be visible.
     var updateOverlayIsVisible: Bool { get }
+
+    /// Where a pending `move_split` will put the source split.
+    var moveDestination: SplitTree<Ghostty.SurfaceView>.MoveDestination? { get }
 }
 
 /// The main terminal view. This terminal view supports splits.
@@ -81,6 +84,7 @@ struct TerminalView<ViewModel: TerminalViewModel>: View {
 
                     TerminalSplitTreeView(
                         tree: viewModel.surfaceTree,
+                        moveDestination: viewModel.moveDestination,
                         action: { delegate?.performSplitAction($0) })
                         .environmentObject(ghostty)
                         .ghosttyLastFocusedSurface(lastFocusedSurface)

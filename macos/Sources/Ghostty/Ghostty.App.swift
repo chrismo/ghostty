@@ -623,6 +623,9 @@ extension Ghostty {
             case GHOSTTY_ACTION_MOVE_TAB_TO_NEW_WINDOW:
                 return moveTabToNewWindow(app, target: target)
 
+            case GHOSTTY_ACTION_MOVE_SPLIT:
+                return moveSplit(app, target: target, v: action.action.move_split)
+
             case GHOSTTY_ACTION_MOVE_SPLIT_TO_NEW_TAB:
                 return moveSplitToNewTab(app, target: target)
 
@@ -1345,6 +1348,34 @@ extension Ghostty {
                     guard let surfaceView = self.surfaceView(from: surface) else { return false }
                     guard let controller = surfaceView.window?.windowController as? TerminalController else { return false }
                     return controller.moveSplitToNewTab(surfaceView)
+
+                default:
+                    assertionFailure()
+                    return false
+                }
+        }
+
+        private static func moveSplit(
+            _ app: ghostty_app_t,
+            target: ghostty_target_s,
+            v: ghostty_action_move_split_e) -> Bool {
+                switch target.tag {
+                case GHOSTTY_TARGET_APP:
+                    Ghostty.logger.warning("move split does nothing with an app target")
+                    return false
+
+                case GHOSTTY_TARGET_SURFACE:
+                    guard let surface = target.target.surface else { return false }
+                    guard let surfaceView = self.surfaceView(from: surface) else { return false }
+                    guard let controller = surfaceView.window?.windowController as? BaseTerminalController else { return false }
+                    switch v {
+                    case GHOSTTY_MOVE_SPLIT_LEFT: controller.stepMoveDestination(from: surfaceView, direction: .left)
+                    case GHOSTTY_MOVE_SPLIT_RIGHT: controller.stepMoveDestination(from: surfaceView, direction: .right)
+                    case GHOSTTY_MOVE_SPLIT_UP: controller.stepMoveDestination(from: surfaceView, direction: .up)
+                    case GHOSTTY_MOVE_SPLIT_DOWN: controller.stepMoveDestination(from: surfaceView, direction: .down)
+                    default: return false
+                    }
+                    return true
 
                 default:
                     assertionFailure()
