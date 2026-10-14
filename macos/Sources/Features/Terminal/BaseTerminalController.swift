@@ -50,6 +50,9 @@ class BaseTerminalController: NSWindowController,
         didSet {
             Self.updateSurfaceControllers(self, from: oldValue, to: surfaceTree)
             surfaceTreeDidChange(from: oldValue, to: surfaceTree)
+
+            // The highlight may point at a moved or closed split.
+            endMove()
         }
     }
 
@@ -58,6 +61,15 @@ class BaseTerminalController: NSWindowController,
 
     /// Set if the terminal view should show the update overlay.
     @Published var updateOverlayIsVisible: Bool = false
+
+    /// Where a pending `move_split` will put the source split, shown as a highlight.
+    @Published private(set) var moveDestination: SplitTree<Ghostty.SurfaceView>.MoveDestination?
+
+    /// The split a pending `move_split` will move. Non-nil while move mode is active.
+    private weak var moveSource: Ghostty.SurfaceView?
+
+    /// The modifiers held when move mode started. Releasing any of them commits the move.
+    private var moveModifiers: NSEvent.ModifierFlags = []
 
     /// True when any surface in this controller currently has an active bell.
     @Published private(set) var bell: Bool = false
@@ -537,6 +549,38 @@ class BaseTerminalController: NSWindowController,
         )
     }
 
+    /// Step the `move_split` highlight in the given direction, starting move mode if
+    /// needed. The move happens when the binding's modifiers are released, so a binding
+    /// without modifiers moves immediately.
+    func stepMoveDestination(from source: Ghostty.SurfaceView, direction: SplitTree<Ghostty.SurfaceView>.Spatial.Direction) {
+        guard surfaceTree.root?.node(view: source) != nil else { return }
+
+        if moveSource !== source {
+            endMove()
+            if surfaceTree.zoomed != nil {
+                surfaceTree = SplitTree(root: surfaceTree.root, zoomed: nil)
+            }
+            moveSource = source
+            moveModifiers = NSEvent.modifierFlags.intersection([.shift, .control, .option, .command])
+        }
+
+        moveDestination = surfaceTree.moveDestination(after: moveDestination, movingFrom: source, toward: direction)
+        if moveModifiers.isEmpty { commitMove() }
+    }
+
+    /// Move the source split to the highlighted destination and end move mode.
+    private func commitMove() {
+        let source = moveSource, destination = moveDestination
+        endMove()
+        guard let source, let destination else { return }
+        moveSurface(source, beside: destination.view, direction: destination.direction)
+    }
+
+    private func endMove() {
+        moveSource = nil
+        moveDestination = nil
+    }
+
     func replaceSurfaceTree(
         _ newTree: SplitTree<Ghostty.SurfaceView>,
         moveFocusTo newView: Ghostty.SurfaceView? = nil,
@@ -861,6 +905,10 @@ class BaseTerminalController: NSWindowController,
     }
 
     private func localEventFlagsChanged(_ event: NSEvent) -> NSEvent? {
+        if moveSource != nil, !event.modifierFlags.isSuperset(of: moveModifiers) {
+            commitMove()
+        }
+
         var surfaces: [Ghostty.SurfaceView] = surfaceTree.map { $0 }
 
         // If we're the main window receiving key input, then we want to avoid
@@ -882,6 +930,10 @@ class BaseTerminalController: NSWindowController,
     func focusedSurfaceDidChange(to: Ghostty.SurfaceView?) {
         let lastFocusedSurface = focusedSurface
         focusedSurface = to
+
+        if let to, moveSource != nil, to !== moveSource {
+            endMove()
+        }
 
         // Important to cancel any prior subscriptions
         focusedSurfaceCancellables = []
@@ -970,6 +1022,29 @@ class BaseTerminalController: NSWindowController,
         }
     }
 
+    /// Move a split within this tree to the given side of another split.
+    private func moveSurface(
+        _ source: Ghostty.SurfaceView,
+        beside destination: Ghostty.SurfaceView,
+        direction: SplitTree<Ghostty.SurfaceView>.NewDirection
+    ) {
+        guard let sourceNode = surfaceTree.root?.node(view: source) else { return }
+        let treeWithoutSource = surfaceTree.removing(sourceNode)
+        let newTree: SplitTree<Ghostty.SurfaceView>
+        do {
+            newTree = try treeWithoutSource.inserting(view: source, at: destination, direction: direction)
+        } catch {
+            Ghostty.logger.warning("failed to insert surface during move: \(error, privacy: .public)")
+            return
+        }
+
+        replaceSurfaceTree(
+            newTree,
+            moveFocusTo: source,
+            moveFocusFrom: focusedSurface,
+            undoAction: "Move Split")
+    }
+
     private func splitDidDrop(
         source: Ghostty.SurfaceView,
         destination: Ghostty.SurfaceView,
@@ -984,22 +1059,8 @@ class BaseTerminalController: NSWindowController,
         }
 
         // Check if source is in our tree
-        if let sourceNode = surfaceTree.root?.node(view: source) {
-            // Source is in our tree - same window move
-            let treeWithoutSource = surfaceTree.removing(sourceNode)
-            let newTree: SplitTree<Ghostty.SurfaceView>
-            do {
-                newTree = try treeWithoutSource.inserting(view: source, at: destination, direction: direction)
-            } catch {
-                Ghostty.logger.warning("failed to insert surface during drop: \(error, privacy: .public)")
-                return
-            }
-
-            replaceSurfaceTree(
-                newTree,
-                moveFocusTo: source,
-                moveFocusFrom: focusedSurface,
-                undoAction: "Move Split")
+        if surfaceTree.root?.node(view: source) != nil {
+            moveSurface(source, beside: destination, direction: direction)
             return
         }
 
@@ -1279,6 +1340,9 @@ class BaseTerminalController: NSWindowController,
     }
 
     func windowDidResignKey(_ notification: Notification) {
+        // Modifier releases stop reaching us, so a pending move could never commit.
+        endMove()
+
         // Becoming/losing key means we have to notify our surface(s) that we have focus
         // so things like cursors blink, pty events are sent, etc.
         self.syncFocusToSurfaceTree()

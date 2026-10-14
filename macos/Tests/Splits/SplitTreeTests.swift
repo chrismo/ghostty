@@ -153,6 +153,65 @@ struct SplitTreeTests {
         }
     }
 
+    // MARK: - Move Destination
+
+    @Test func moveDestinationStartsOnNearHalfOfNeighbor() throws {
+        let (tree, view1, view2) = try makeHorizontalSplit()
+        let dest = tree.moveDestination(after: nil, movingFrom: view1, toward: .right)
+        #expect(dest?.view === view2)
+        #expect(dest?.direction == .left)
+    }
+
+    @Test func moveDestinationTurnsWithinPane() throws {
+        let (tree, view1, view2) = try makeHorizontalSplit()
+        let dest = tree.moveDestination(
+            after: .init(view: view2, direction: .left), movingFrom: view1, toward: .up)
+        #expect(dest?.view === view2)
+        #expect(dest?.direction == .up)
+    }
+
+    @Test func moveDestinationCrossesToFarHalf() throws {
+        let (tree, view1, view2) = try makeHorizontalSplit()
+        let dest = tree.moveDestination(
+            after: .init(view: view2, direction: .left), movingFrom: view1, toward: .right)
+        #expect(dest?.view === view2)
+        #expect(dest?.direction == .right)
+    }
+
+    @Test func moveDestinationStaysPutAtTheEdge() throws {
+        let (tree, view1, view2) = try makeHorizontalSplit()
+        let dest = tree.moveDestination(
+            after: .init(view: view2, direction: .right), movingFrom: view1, toward: .right)
+        #expect(dest?.view === view2)
+        #expect(dest?.direction == .right)
+    }
+
+    @Test func moveDestinationStepsBackOntoTheSource() throws {
+        let (tree, view1, view2) = try makeHorizontalSplit()
+        let dest = tree.moveDestination(
+            after: .init(view: view2, direction: .left), movingFrom: view1, toward: .left)
+        #expect(dest == nil)
+    }
+
+    @Test func moveDestinationLeavesTheSourceFromEitherSide() throws {
+        let viewA = MockView()
+        let source = MockView()
+        let viewB = MockView()
+        var tree = SplitTree<MockView>(view: viewA)
+        tree = try tree.inserting(view: source, at: viewA, direction: .right)
+        tree = try tree.inserting(view: viewB, at: source, direction: .right)
+
+        let dest = tree.moveDestination(after: nil, movingFrom: source, toward: .left)
+
+        #expect(dest?.view === viewA)
+        #expect(dest?.direction == .right)
+    }
+
+    @Test func moveDestinationIsNilWithNoNeighbor() throws {
+        let (tree, view1, _) = try makeHorizontalSplit()
+        #expect(tree.moveDestination(after: nil, movingFrom: view1, toward: .left) == nil)
+    }
+
     // MARK: - Focus Target
 
     @Test func focusTargetOnEmptyTreeReturnsNil() {

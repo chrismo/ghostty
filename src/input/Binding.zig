@@ -619,6 +619,16 @@ pub const Action = union(enum) {
     /// Only implemented on macOS.
     move_marked_tabs_to_new_window,
 
+    /// Move the focused split within its tab from the keyboard, like dragging
+    /// it onto half of another split. Each press steps a highlighted half in
+    /// the given direction (`left`, `right`, `up`, `down`): within the
+    /// highlighted split when turning, otherwise onto the near half of the
+    /// next split over. Releasing the binding's modifiers moves the split
+    /// there; stepping back onto the focused split and releasing cancels.
+    ///
+    /// Only implemented on macOS.
+    move_split: MoveSplit,
+
     /// Toggle the tab overview.
     ///
     /// This is only supported on Linux and when the system's libadwaita
@@ -1090,6 +1100,13 @@ pub const Action = union(enum) {
         pub const default: SplitDirection = .auto;
     };
 
+    pub const MoveSplit = enum {
+        left,
+        right,
+        up,
+        down,
+    };
+
     pub const SplitFocusDirection = enum {
         previous,
         next,
@@ -1485,6 +1502,7 @@ pub const Action = union(enum) {
             .move_tab_to_split,
             .mark_tab,
             .move_marked_tabs_to_new_window,
+            .move_split,
             .toggle_tab_overview,
             .new_split,
             .goto_split,
@@ -3418,6 +3436,17 @@ test "parse: mark_tab" {
     const binding = try parseSingle("a=mark_tab");
     try testing.expect(binding.action == .mark_tab);
     try testing.expectEqual(Action.Scope.surface, binding.action.scope());
+}
+
+test "parse: move_split" {
+    const testing = std.testing;
+
+    const binding = try parseSingle("a=move_split:left");
+    try testing.expectEqual(Action.MoveSplit.left, binding.action.move_split);
+    try testing.expectEqual(Action.Scope.surface, binding.action.scope());
+
+    try testing.expectError(Error.InvalidFormat, parseSingle("a=move_split"));
+    try testing.expectError(Error.InvalidFormat, parseSingle("a=move_split:commit"));
 }
 
 test "parse: move_marked_tabs_to_new_window" {
