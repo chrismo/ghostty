@@ -193,6 +193,43 @@ extension SplitTree {
         return .init(root: newRoot, zoomed: newZoomed)
     }
 
+    /// Where a moved view lands: beside `view`, on its `direction` side.
+    struct MoveDestination {
+        let view: ViewType
+        let direction: NewDirection
+    }
+
+    /// The next destination when stepping a move highlight half a view at a time,
+    /// where nil means `source` itself, i.e. no move. Turning moves to another half
+    /// of the same view; continuing past the current half moves to the near half of
+    /// the next view over, or back onto `source`.
+    func moveDestination(
+        after current: MoveDestination?,
+        movingFrom source: ViewType,
+        toward direction: Spatial.Direction
+    ) -> MoveDestination? {
+        let side: NewDirection = switch direction {
+        case .left: .left
+        case .right: .right
+        case .up: .up
+        case .down: .down
+        }
+        let nearSide: NewDirection = switch direction {
+        case .left: .right
+        case .right: .left
+        case .up: .down
+        case .down: .up
+        }
+
+        if let current, current.direction != side {
+            return .init(view: current.view, direction: side)
+        }
+
+        guard let node = root?.node(view: current?.view ?? source),
+              let next = focusTarget(for: .spatial(direction), from: node) else { return current }
+        return next === source ? nil : .init(view: next, direction: nearSide)
+    }
+
     /// Find the next view to focus based on the current focused node and direction
     func focusTarget(for direction: FocusDirection, from currentNode: Node) -> ViewType? {
         guard let root else { return nil }
