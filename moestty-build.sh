@@ -20,9 +20,10 @@ cp -R zig-out/Ghostty.app "$app"
 
 # Xcode registers each build under the same bundle ID, and the Dock may
 # launch that copy instead.
-"$lsregister" -u "$PWD/macos/build/ReleaseLocal/Ghostty.app" || true
-"$lsregister" -u "$PWD/macos/build/Debug/Ghostty.app" || true
-"$lsregister" -u "$PWD/zig-out/Ghostty.app" || true
+for copy in "$PWD"/macos/build/*/Ghostty.app "$PWD/zig-out/Ghostty.app" \
+  ~/Library/Developer/Xcode/DerivedData/Ghostty-*/Build/Products/*/Ghostty.app; do
+  "$lsregister" -u "$copy" 2>/dev/null || true
+done
 "$lsregister" -f "$app"
 
 echo "Installed $app"
