@@ -6,17 +6,17 @@ releases. None of it was tried in WezTerm.
 
 ## Built in vs. Moestty
 
-| Moestty feature | WezTerm | How |
-|---|---|---|
-| `move_split_to_new_tab` | Built in | `pane:move_to_new_tab()`, `PaneSelect{mode="MoveToNewTab"}`, or `wezterm cli move-pane-to-new-tab` |
-| Split to new window | Built in | `pane:move_to_new_window()`, `PaneSelect{mode="MoveToNewWindow"}`, or `move-pane-to-new-tab --new-window` |
-| `move_tab_to_split` | Single panes only | `wezterm cli split-pane --move-pane-id N` moves one pane into a new split. Nothing grafts a whole tab's split tree. |
-| Mark tabs, move to a new or named window | Script it, and layouts are lost | Marks can live in `wezterm.GLOBAL`. The only way across windows is `move-pane-to-new-tab --window-id`, which moves panes, so a tab with splits arrives as separate tabs. There's no "move tab to existing window". |
-| Named windows | Built in | `MuxWindow:set_title()` / `get_title()`. Workspaces are also named groups. |
-| Window names restored after relaunch | Plugin only | resurrect.wezterm saves window and tab titles and can restore on `gui-startup`. Saving has to be set up, and the repo is archived (the author points to forks). |
-| AppleScript `name` / `move tab` | No | WezTerm is scripted with Lua and `wezterm cli`. The docs mention no AppleScript dictionary. |
-| `move_split` (arrows over half-split drop zones) | No | The closest are `PaneSelect{mode="SwapWithActive"}` (swap by pane label) and `RotatePanes`. |
-| Drag a tab to another window | Not found | Issue #1253 asked for moving tabs between windows and was closed with only the pane-level commands. |
+| Moestty feature                                  | WezTerm                         | How                                                                                                                                                                                                                |
+| ------------------------------------------------ | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `move_split_to_new_tab`                          | Built in                        | `pane:move_to_new_tab()`, `PaneSelect{mode="MoveToNewTab"}`, or `wezterm cli move-pane-to-new-tab`                                                                                                                 |
+| Split to new window                              | Built in                        | `pane:move_to_new_window()`, `PaneSelect{mode="MoveToNewWindow"}`, or `move-pane-to-new-tab --new-window`                                                                                                          |
+| `move_tab_to_split`                              | Single panes only               | `wezterm cli split-pane --move-pane-id N` moves one pane into a new split. Nothing grafts a whole tab's split tree.                                                                                                |
+| Mark tabs, move to a new or named window         | Script it, and layouts are lost | Marks can live in `wezterm.GLOBAL`. The only way across windows is `move-pane-to-new-tab --window-id`, which moves panes, so a tab with splits arrives as separate tabs. There's no "move tab to existing window". |
+| Named windows                                    | Built in                        | `MuxWindow:set_title()` / `get_title()`. Workspaces are also named groups.                                                                                                                                         |
+| Window names restored after relaunch             | Plugin only                     | resurrect.wezterm saves window and tab titles and can restore on `gui-startup`. Saving has to be set up, and the repo is archived (the author points to forks).                                                    |
+| AppleScript `name` / `move tab`                  | No                              | WezTerm is scripted with Lua and `wezterm cli`. The docs mention no AppleScript dictionary.                                                                                                                        |
+| `move_split` (arrows over half-split drop zones) | No                              | The closest are `PaneSelect{mode="SwapWithActive"}` (swap by pane label) and `RotatePanes`.                                                                                                                        |
+| Drag a tab to another window                     | Not found                       | Issue #1253 asked for moving tabs between windows and was closed with only the pane-level commands.                                                                                                                |
 
 So WezTerm is enough if tabs are mostly single panes. Moving tabs with splits
 would flatten them.
@@ -29,29 +29,36 @@ the config with `wezterm.plugin.require`, using the same API as
 
 - **Whole tab to split, keeping the layout:** doable, moderate effort.
   `tab:panes_with_info()` gives each pane's `left`, `top`, `width` and
-  `height` in cells. `wezterm cli split-pane --pane-id <target>
-  --move-pane-id <pane> --left|--right|--top|--bottom --percent N` moves an
-  existing pane into a new split. WezTerm's splits are binary trees, so the
-  tree can be rebuilt from the geometry: find a cut that runs the full
-  length of the tab, then recurse on each side. Then replay the moves one
-  pane at a time. Estimated at 100-150 lines of Lua that call `wezterm cli`
-  through `wezterm.run_child_process`, since Lua's `pane:split` doesn't
-  appear to take an existing pane. Expect split sizes to land a cell or so
+  `height` in cells. This moves an existing pane into a new split:
+
+  ```sh
+  wezterm cli split-pane --pane-id <target> --move-pane-id <pane> \
+    --left|--right|--top|--bottom --percent N
+  ```
+
+  WezTerm's splits are binary trees, so the tree can be rebuilt from the
+  geometry: find a cut that runs the full length of the tab, then recurse
+  on each side. Then replay the moves one pane at a time. Estimated at
+  100-150 lines of Lua that call `wezterm cli` through
+  `wezterm.run_child_process`, since Lua's `pane:split` doesn't appear to
+  take an existing pane. Expect split sizes to land a cell or so
   off and the panes to visibly reshuffle while it runs.
+
 - **Mark tabs, move to a window:** easy once the piece above exists. Keep
   the marks in `wezterm.GLOBAL` and show them with the `format-tab-title`
-  event. To move a tab, send its first pane with `move-pane-to-new-tab
-  --window-id`, then rebuild the rest of the layout the same way.
+  event. To move a tab, send its first pane with
+  `move-pane-to-new-tab --window-id`, then rebuild the rest of the layout
+  the same way.
 - **Named windows across relaunch:** `set_title` is built in. To restore
   names after relaunch, use a resurrect fork or write the names to a file
   from Lua. A separate mux server (`unix_domains`) may keep panes alive
   through quitting the app, though not a reboot. That's from memory and
   wasn't checked.
 - **`move_split`:** half of it. The move itself can be scripted with a key
-  table: arrows pick a neighbor and a side, then `split-pane
-  --move-pane-id` does the move. The live half-split highlight can't be
-  built, because Lua apparently can't draw over panes. The best substitute
-  is showing the target in the status bar.
+  table: arrows pick a neighbor and a side, then
+  `split-pane --move-pane-id` does the move. The live half-split highlight
+  can't be built, because Lua apparently can't draw over panes. The best
+  substitute is showing the target in the status bar.
 - **AppleScript:** no. `wezterm cli` replaces it, and anything outside
   WezTerm can call that from the shell.
 - **Dragging tabs between windows:** no. That's GUI code, and Lua can't
