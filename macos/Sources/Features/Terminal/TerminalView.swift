@@ -33,6 +33,8 @@ protocol TerminalViewModel: ObservableObject {
     /// The command palette state.
     var commandPaletteIsShowing: Bool { get set }
 
+    var tabSwitcherIsShowing: Bool { get set }
+
     /// The update overlay should be visible.
     var updateOverlayIsVisible: Bool { get }
 
@@ -119,6 +121,11 @@ struct TerminalView<ViewModel: TerminalViewModel>: View {
                         updateViewModel: (NSApp.delegate as? AppDelegate)?.updateViewModel) { action in
                         self.delegate?.performAction(action, on: surfaceView)
                     }
+
+                    TerminalTabSwitcherView(
+                        surfaceView: surfaceView,
+                        isPresented: $viewModel.tabSwitcherIsShowing,
+                        ghosttyConfig: ghostty.config)
                 }
 
                 // Show update information above all else.

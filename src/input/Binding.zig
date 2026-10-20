@@ -629,6 +629,13 @@ pub const Action = union(enum) {
     /// Only implemented on macOS.
     move_split: MoveSplit,
 
+    /// Toggle the tab switcher: a popup that lists every tab across all
+    /// windows, one row per tab, and fuzzy filters them as you type.
+    /// Selecting a row brings its window forward and switches to the tab.
+    ///
+    /// Only implemented on macOS.
+    toggle_tab_switcher,
+
     /// Toggle the tab overview.
     ///
     /// This is only supported on Linux and when the system's libadwaita
@@ -1476,6 +1483,7 @@ pub const Action = union(enum) {
             .toggle_secure_input,
             .toggle_mouse_reporting,
             .toggle_command_palette,
+            .toggle_tab_switcher,
             .toggle_background_opacity,
             .show_on_screen_keyboard,
             .reset_window_size,
@@ -3447,6 +3455,14 @@ test "parse: move_split" {
 
     try testing.expectError(Error.InvalidFormat, parseSingle("a=move_split"));
     try testing.expectError(Error.InvalidFormat, parseSingle("a=move_split:commit"));
+}
+
+test "parse: toggle_tab_switcher" {
+    const testing = std.testing;
+
+    const binding = try parseSingle("a=toggle_tab_switcher");
+    try testing.expect(binding.action == .toggle_tab_switcher);
+    try testing.expectEqual(Action.Scope.surface, binding.action.scope());
 }
 
 test "parse: move_marked_tabs_to_new_window" {

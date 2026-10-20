@@ -22,6 +22,15 @@ Moestty adds (found by their `test "..."` names in the diff from upstream,
 because the full Zig suite is slow), and runs all the Swift tests except UI
 tests. The Swift tests launch a Debug Ghostty as their host app.
 
+`./moestty-build.sh test-ui [CLASS]` builds, then runs the UI tests, or one
+class of them such as `GhosttyTabSwitcherTests`. They drive the keyboard
+and mouse, so leave the machine alone while they run. Upstream's UI tests
+skip themselves unless `IDE_DISABLED_OS_ACTIVITY_DT_MODE`, which Xcode
+sets, is in their environment, so a plain `xcodebuild test` runs zero UI
+tests and passes. The script passes the variable through as
+`TEST_RUNNER_IDE_DISABLED_OS_ACTIVITY_DT_MODE`. With a Dvorak layout,
+XCUITest's ⌘⌥B never reached the app, so the tests avoid it.
+
 Xcode registers every app it builds with LaunchServices under the same
 bundle ID, so without the script's `lsregister` lines, launching by
 bundle ID (the Dock, `open -b`) can start the build-folder copy. That copy shows as
@@ -60,6 +69,8 @@ over.
 - `prompt_window_title` / `set_window_title:<name>`: upstream these are
   Linux-only. On macOS they name the window (the whole tab group); an
   empty name clears it.
+- `toggle_tab_switcher`: a fuzzy finder over every tab in every window.
+  See "Tab switcher".
 
 ## Tab ranges
 
@@ -121,6 +132,34 @@ Where the name shows:
 - Window menu: AppKit lists every tab on its own, so each tab's entry is
   prefixed with its window's name ("proj-x — vim").
 - Not in the tab bar or title bar.
+
+## Tab switcher
+
+The command palette's `Focus:` entries list every split rather than every
+tab, mix in commands, and only match substrings, which emoji-prefixed tab
+titles defeat. `toggle_tab_switcher` opens the palette's popup with only
+tabs in it, one row per tab across all windows, labelled like the Window
+menu ("proj-x — 🔵 editor") with the tab's directory below.
+
+    keybind = super+k=toggle_tab_switcher
+
+Matching is fzf-style (`FuzzyMatch.swift`): each space-separated term
+must match, in any order, with gaps allowed inside a term, ignoring case
+and diacritics. A term matches within the label or within the directory
+and highlights only the one it matched best. Results rank by score
+(word starts and runs of consecutive letters score higher); ties keep
+the empty-query order: windows in a fixed order (by window number,
+roughly creation order) and tabs in tab bar order. There's no
+recently-used ordering.
+
+Choosing a tab brings its window forward on that tab and focuses the
+split it last had focused. Escape, or the binding again, closes the
+switcher and leaves focus where it was. Asking for the command palette
+while the switcher is up (or the reverse) just closes the open one. A tab
+that closes while the switcher is open is skipped if chosen.
+
+The switcher has no menu item, so dismissing it with the binding works
+through a hidden button carrying the binding's shortcut.
 
 ## AppleScript
 

@@ -822,6 +822,7 @@ pub const Application = extern struct {
             .mark_tab,
             .move_marked_tabs_to_new_window,
             .move_split,
+            .toggle_tab_switcher,
             => {
                 log.warn("unimplemented action={}", .{action});
                 return false;
