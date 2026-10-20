@@ -57,10 +57,43 @@ struct CommandOption: Identifiable, Hashable {
     }
 }
 
+struct CommandPaletteMatcher {
+    /// Only called with a nonempty query.
+    let filter: ([CommandOption], String) -> [CommandOption]
+    /// The characters to highlight in an option's title and in the secondary
+    /// text below it (its subtitle, or its description without one).
+    let highlights: (CommandOption, String) -> (title: [String.Index]?, subtitle: [String.Index]?)
+
+    static var commandPalette: Self {
+        .init(
+            filter: { $0.filteredAndSorted(query: $1) },
+            highlights: { option, query in
+                if let title = option.title.matchedIndices(for: query) {
+                    return (title, nil)
+                }
+                return (nil, (option.subtitle ?? option.description)?.matchedIndices(for: query))
+            })
+    }
+
+    static var fuzzy: Self {
+        .init(
+            filter: { $0.fuzzyFilteredAndSorted(query: $1) },
+            highlights: { option, query in
+                guard let match = FuzzyMatch.query(query, fields: option.fuzzyFields) else { return (nil, nil) }
+                return (match.highlights[0], match.highlights[1])
+            })
+    }
+}
+
 struct CommandPaletteView: View {
     @Binding var isPresented: Bool
     var backgroundColor: Color = Color(nsColor: .windowBackgroundColor)
     var options: [CommandOption]
+    var placeholder: String = "Execute a command…"
+    var matcher: CommandPaletteMatcher = .commandPalette
+    var selectsTopMatchOnEdit: Bool = false
+    /// A shortcut that dismisses the palette while its query has focus.
+    var dismissShortcut: KeyboardShortcut?
     @State private var rawQuery = ""
     @State private var selectedIndex: UInt?
     @State private var hoveredOptionID: UUID?
@@ -76,7 +109,7 @@ struct CommandPaletteView: View {
         if query.isEmpty {
             return options
         } else {
-            return options.filteredAndSorted(query: query)
+            return matcher.filter(options, query)
         }
     }
 
@@ -97,7 +130,11 @@ struct CommandPaletteView: View {
         }
 
         VStack(alignment: .leading, spacing: 0) {
-            CommandPaletteQuery(query: $rawQuery) { event in
+            CommandPaletteQuery(
+                query: $rawQuery,
+                placeholder: placeholder,
+                dismissShortcut: dismissShortcut
+            ) { event in
                 switch event {
                 case .exit:
                     isPresented = false
@@ -130,7 +167,7 @@ struct CommandPaletteView: View {
                 // value is selected. If the user clears the query and we were selecting
                 // the first, we unset any selection.
                 if !newValue.isEmpty {
-                    if selectedIndex == nil {
+                    if selectedIndex == nil || selectsTopMatchOnEdit {
                         selectedIndex = 0
                     }
                 } else {
@@ -145,6 +182,7 @@ struct CommandPaletteView: View {
             CommandTable(
                 options: filteredOptions,
                 query: query,
+                matcher: matcher,
                 selectedIndex: $selectedIndex,
                 hoveredOptionID: $hoveredOptionID) { option in
                     isPresented = false
@@ -185,11 +223,20 @@ struct CommandPaletteView: View {
 /// The text field for building the query for the command palette.
 private struct CommandPaletteQuery: View {
     @Binding var query: String
+    var placeholder: String
+    var dismissShortcut: KeyboardShortcut?
     var onEvent: ((KeyboardEvent) -> Void)?
     @FocusState private var isTextFieldFocused: Bool
 
-    init(query: Binding<String>, onEvent: ((KeyboardEvent) -> Void)? = nil) {
+    init(
+        query: Binding<String>,
+        placeholder: String,
+        dismissShortcut: KeyboardShortcut? = nil,
+        onEvent: ((KeyboardEvent) -> Void)? = nil
+    ) {
         _query = query
+        self.placeholder = placeholder
+        self.dismissShortcut = dismissShortcut
         self.onEvent = onEvent
     }
 
@@ -215,11 +262,17 @@ private struct CommandPaletteQuery: View {
                 Button { onEvent?(.move(.down)) } label: { Color.clear }
                     .buttonStyle(PlainButtonStyle())
                     .keyboardShortcut(.init("n"), modifiers: [.control])
+
+                if let dismissShortcut {
+                    Button { onEvent?(.exit) } label: { Color.clear }
+                        .buttonStyle(PlainButtonStyle())
+                        .keyboardShortcut(dismissShortcut)
+                }
             }
             .frame(width: 0, height: 0)
             .accessibilityHidden(true)
 
-            TextField("Execute a command…", text: $query)
+            TextField(placeholder, text: $query)
                 .padding()
                 .font(.system(size: 20, weight: .light))
                 .frame(height: 48)
@@ -251,6 +304,7 @@ private struct CommandPaletteQuery: View {
 private struct CommandTable: View {
     var options: [CommandOption]
     var query: String
+    var matcher: CommandPaletteMatcher
     @Binding var selectedIndex: UInt?
     @Binding var hoveredOptionID: UUID?
     var action: (CommandOption) -> Void
@@ -267,7 +321,9 @@ private struct CommandTable: View {
                         ForEach(Array(options.enumerated()), id: \.1.id) { index, option in
                             CommandRow(
                                 option: option,
-                                query: query,
+                                highlights: query.isEmpty
+                                    ? (nil, nil)
+                                    : matcher.highlights(option, query),
                                 isSelected: {
                                     if let selected = selectedIndex {
                                         return selected == index ||
@@ -300,14 +356,13 @@ private struct CommandTable: View {
 /// A single row in the command palette.
 private struct CommandRow: View {
     let option: CommandOption
-    var query: String
+    var highlights: (title: [String.Index]?, subtitle: [String.Index]?)
     var isSelected: Bool
     @Binding var hoveredID: UUID?
     var action: () -> Void
 
     private var highlightedTitle: Text {
-        guard !query.isEmpty,
-              let indices = option.title.matchedIndices(for: query) else {
+        guard let indices = highlights.title, !indices.isEmpty else {
             return Text(option.title)
                 .fontWeight(option.emphasis ? .medium : .regular)
         }
@@ -328,9 +383,7 @@ private struct CommandRow: View {
     }
 
     private func highlightedSubtitle(_ subtitle: String) -> Text {
-        guard !query.isEmpty,
-              option.title.matchedIndices(for: query) == nil,
-              let indices = subtitle.matchedIndices(for: query) else {
+        guard let indices = highlights.subtitle, !indices.isEmpty else {
             return Text(subtitle)
         }
 

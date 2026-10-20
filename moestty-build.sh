@@ -4,6 +4,9 @@
 #   ./moestty-build.sh                  build and install
 #   ./moestty-build.sh check            build, then run Moestty's Zig tests
 #                                       and the macOS app's Swift tests
+#   ./moestty-build.sh test-ui [CLASS]  build, then run the macOS UI tests,
+#                                       or one class of them, such as
+#                                       GhosttyTabSwitcherTests
 #   ./moestty-build.sh sync             pick up fork/moestty, rebase onto
 #                                       upstream main, then check
 #   ./moestty-build.sh bump [VERSION]   set the Moestty version, by default
@@ -48,6 +51,14 @@ install_app() {
   echo "Installed $app"
 }
 
+# Opening the Debug app leaves xattrs that fail its next CodeSign.
+clear_debug_xattrs() {
+  local debug_app
+  for debug_app in ~/Library/Developer/Xcode/DerivedData/Ghostty-*/Build/Products/Debug/Ghostty.app; do
+    xattr -cr "$debug_app" 2>/dev/null || true
+  done
+}
+
 check() {
   build
 
@@ -61,16 +72,28 @@ check() {
     zig build test "${filters[@]}"
   fi
 
-  # Opening the Debug app leaves xattrs that fail its next CodeSign.
-  local debug_app
-  for debug_app in ~/Library/Developer/Xcode/DerivedData/Ghostty-*/Build/Products/Debug/Ghostty.app; do
-    xattr -cr "$debug_app" 2>/dev/null || true
-  done
+  clear_debug_xattrs
   (cd macos && env -i PATH="$PATH" xcodebuild test -quiet -scheme Ghostty \
     -skip-testing GhosttyUITests -arch "$(uname -m)")
   unregister_build_copies
 
   echo "Check passed."
+}
+
+test_ui() {
+  build
+
+  # The UI tests skip themselves unless Xcode's IDE_DISABLED_OS_ACTIVITY_DT_MODE
+  # is set; xcodebuild passes TEST_RUNNER_ variables on without the prefix.
+  local only=GhosttyUITests
+  [[ -n ${1:-} ]] && only+="/$1"
+  echo "The UI tests take over the keyboard and mouse; hands off until they finish." >&2
+  clear_debug_xattrs
+  (cd macos && env -i PATH="$PATH" HOME="$HOME" TEST_RUNNER_IDE_DISABLED_OS_ACTIVITY_DT_MODE=1 \
+    xcodebuild test -quiet -scheme Ghostty -only-testing "$only" -arch "$(uname -m)")
+  unregister_build_copies
+
+  echo "UI tests passed."
 }
 
 sync_upstream() {
@@ -134,10 +157,11 @@ main() {
   case "${1:-}" in
   "") install_app ;;
   check) check ;;
+  test-ui) test_ui "${2:-}" ;;
   sync) sync_upstream ;;
   bump) bump "${2:-}" ;;
   *)
-    echo "Usage: $0 [check | sync | bump [VERSION]]" >&2
+    echo "Usage: $0 [check | test-ui [CLASS] | sync | bump [VERSION]]" >&2
     exit 1
     ;;
   esac

@@ -675,8 +675,9 @@ extension Ghostty {
         }
 
         private func localEventLeftMouseDown(_ event: NSEvent) -> NSEvent? {
-            let isCommandPaletteVisible = (event.window?.windowController as? BaseTerminalController)?
-                .commandPaletteIsShowing == true
+            let controller = event.window?.windowController as? BaseTerminalController
+            let isCommandPaletteVisible = controller?.commandPaletteIsShowing == true ||
+                controller?.tabSwitcherIsShowing == true
             guard !isCommandPaletteVisible else {
                 // We don't want to process events that
                 // are supposed to be handled by CommandPaletteView
@@ -1055,6 +1056,7 @@ extension Ghostty {
             if let window,
                let controller = window.windowController as? BaseTerminalController,
                !controller.commandPaletteIsShowing,
+               !controller.tabSwitcherIsShowing,
                window.isKeyWindow &&
                     !self.focused &&
                     controller.focusFollowsMouse {

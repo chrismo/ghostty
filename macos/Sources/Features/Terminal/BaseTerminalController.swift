@@ -59,6 +59,8 @@ class BaseTerminalController: NSWindowController,
     /// This can be set to show/hide the command palette.
     @Published var commandPaletteIsShowing: Bool = false
 
+    @Published var tabSwitcherIsShowing: Bool = false
+
     /// Set if the terminal view should show the update overlay.
     @Published var updateOverlayIsVisible: Bool = false
 
@@ -185,6 +187,11 @@ class BaseTerminalController: NSWindowController,
             self,
             selector: #selector(ghosttyCommandPaletteDidToggle(_:)),
             name: .ghosttyCommandPaletteDidToggle,
+            object: nil)
+        center.addObserver(
+            self,
+            selector: #selector(ghosttyTabSwitcherDidToggle(_:)),
+            name: .ghosttyTabSwitcherDidToggle,
             object: nil)
         center.addObserver(
             self,
@@ -690,6 +697,12 @@ class BaseTerminalController: NSWindowController,
         guard let surfaceView = notification.object as? Ghostty.SurfaceView else { return }
         guard surfaceTree.contains(surfaceView) else { return }
         toggleCommandPalette(nil)
+    }
+
+    @objc private func ghosttyTabSwitcherDidToggle(_ notification: Notification) {
+        guard let surfaceView = notification.object as? Ghostty.SurfaceView else { return }
+        guard surfaceTree.contains(surfaceView) else { return }
+        toggleTabSwitcher(nil)
     }
 
     @objc private func ghosttyMaximizeDidToggle(_ notification: Notification) {
@@ -1497,6 +1510,13 @@ class BaseTerminalController: NSWindowController,
     }
 
     @IBAction func toggleCommandPalette(_ sender: Any?) {
+        // Asking for one popup while the other is up only closes the other,
+        // since both hand focus around as they open and close.
+        if tabSwitcherIsShowing {
+            tabSwitcherIsShowing = false
+            return
+        }
+
         commandPaletteIsShowing.toggle()
         if commandPaletteIsShowing {
             // Fix the incorrect focus when toggling from InlineTitleEditor
@@ -1511,6 +1531,19 @@ class BaseTerminalController: NSWindowController,
             // Since `performKeyEquivalent(with:)` is called on all of the subviews
             // until one of the return `true` so the paste action is consumed by the surface
             // instead of the first responder (command palette).
+            _ = focusedSurface?.resignFirstResponder()
+        }
+    }
+
+    @IBAction func toggleTabSwitcher(_ sender: Any?) {
+        if commandPaletteIsShowing {
+            commandPaletteIsShowing = false
+            return
+        }
+
+        tabSwitcherIsShowing.toggle()
+        if tabSwitcherIsShowing {
+            // See toggleCommandPalette.
             _ = focusedSurface?.resignFirstResponder()
         }
     }

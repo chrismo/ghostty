@@ -380,6 +380,9 @@ pub const Action = union(Key) {
     /// Step the highlighted destination for moving a split.
     move_split: MoveSplit,
 
+    /// Toggle the tab switcher.
+    toggle_tab_switcher,
+
     /// Sync with: ghostty_action_tag_e
     pub const Key = enum(c_int) {
         quit,
@@ -457,6 +460,7 @@ pub const Action = union(Key) {
         mark_tab,
         move_marked_tabs_to_new_window,
         move_split,
+        toggle_tab_switcher,
 
         test "ghostty.h Action.Key" {
             try lib.checkGhosttyHEnum(Key, "GHOSTTY_ACTION_");
