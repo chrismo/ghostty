@@ -9,7 +9,7 @@ const I18n = @import("GhosttyI18n.zig");
 const Resources = @import("GhosttyResources.zig");
 const XCFramework = @import("GhosttyXCFramework.zig");
 
-const moestty_version = "0.2";
+const moestty_version = "0.3";
 
 build: *std.Build.Step.Run,
 open: *std.Build.Step.Run,
