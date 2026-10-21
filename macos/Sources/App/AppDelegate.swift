@@ -334,8 +334,10 @@ class AppDelegate: NSObject,
 
         switch Ghostty.launchSource {
         case .app:
-            // Don't have to do anything.
-            break
+            // macOS 26 often launches apps without activating them (FB21087054).
+            DispatchQueue.main.async {
+                NSApp.activate(ignoringOtherApps: true)
+            }
 
         case .zig_run, .cli:
             // Part of launch services (clicking an app, using `open`, etc.) activates
