@@ -7,6 +7,8 @@
 #   ./moestty-build.sh test-ui [CLASS]  build, then run the macOS UI tests,
 #                                       or one class of them, such as
 #                                       GhosttyTabSwitcherTests
+#   ./moestty-build.sh cleanup          preview leftover build app cleanup
+#   ./moestty-build.sh cleanup --apply  unregister and delete those app bundles
 #   ./moestty-build.sh sync             pick up fork/moestty, rebase onto
 #                                       upstream main, then check
 #   ./moestty-build.sh bump [VERSION]   set the Moestty version, by default
@@ -32,6 +34,72 @@ unregister_build_copies() {
     ~/Library/Developer/Xcode/DerivedData/Ghostty-*/Build/Products/*/Ghostty.app; do
     "$lsregister" -u "$copy" 2>/dev/null || true
   done
+}
+
+cleanup() {
+  local apply=false
+  case "${1:-}" in
+  "") ;;
+  --apply) apply=true ;;
+  *) echo "Usage: $0 cleanup [--apply]" >&2; return 1 ;;
+  esac
+
+  local registered copy bundle_id executable processes running=false
+  registered=$("$lsregister" -dump | awk '/^path: / {sub(/^path: +/, ""); print}')
+  processes=$(ps -axo command=)
+  local copies=() eligible=()
+  while IFS= read -r copy; do
+    case "$copy" in
+    "$PWD"/macos/build/*/Ghostty.app | "$PWD"/zig-out/Ghostty.app | \
+      "$HOME"/Library/Developer/Xcode/DerivedData/Ghostty-*/Build/Products/*/Ghostty.app)
+      copies+=("$copy") ;;
+    esac
+  done < <(
+    {
+      printf '%s\n' "$registered"
+      shopt -s nullglob
+      for copy in "$PWD"/macos/build/*/Ghostty.app "$PWD/zig-out/Ghostty.app" \
+        "$HOME"/Library/Developer/Xcode/DerivedData/Ghostty-*/Build/Products/*/Ghostty.app; do
+        [[ ! -e "$copy" ]] || printf '%s\n' "$copy"
+      done
+    } | sort -u
+  )
+
+  # Check every copy before deleting any; never quit a terminal for cleanup.
+  for copy in ${copies[@]+"${copies[@]}"}; do
+    if [[ -L "$copy" ]]; then
+      echo "Skipping symlink: $copy" >&2
+      continue
+    fi
+    if [[ -e "$copy" ]]; then
+      bundle_id=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$copy/Contents/Info.plist" 2>/dev/null || true)
+      case "$bundle_id" in
+      com.mitchellh.ghostty | com.mitchellh.ghostty.debug) ;;
+      *) echo "Skipping unrecognized app: $copy" >&2; continue ;;
+      esac
+      executable=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$copy/Contents/Info.plist")
+      if printf '%s\n' "$processes" | grep -F -- "$copy/Contents/MacOS/$executable" >/dev/null; then
+        echo "Still running: $copy — quit it before applying cleanup." >&2
+        running=true
+      fi
+    fi
+    eligible+=("$copy")
+    echo "Cleanup: $copy"
+  done
+  if $running && $apply; then
+    return 1
+  fi
+  if ! $apply; then
+    echo "Preview only. Run $0 cleanup --apply to unregister and delete build app bundles."
+    return
+  fi
+
+  for copy in ${eligible[@]+"${eligible[@]}"}; do
+    "$lsregister" -u "$copy"
+    rm -rf -- "$copy"
+  done
+  [[ ! -d "$app" ]] || "$lsregister" -f "$app"
+  echo "Cleanup complete. Kept $app; preferences and saved windows were not touched."
 }
 
 install_app() {
@@ -157,11 +225,12 @@ main() {
   case "${1:-}" in
   "") install_app ;;
   check) check ;;
+  cleanup) cleanup "${2:-}" ;;
   test-ui) test_ui "${2:-}" ;;
   sync) sync_upstream ;;
   bump) bump "${2:-}" ;;
   *)
-    echo "Usage: $0 [check | test-ui [CLASS] | sync | bump [VERSION]]" >&2
+    echo "Usage: $0 [check | cleanup [--apply] | test-ui [CLASS] | sync | bump [VERSION]]" >&2
     exit 1
     ;;
   esac
