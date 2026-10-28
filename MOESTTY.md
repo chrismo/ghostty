@@ -3,7 +3,8 @@
 chrismo's personal macOS build of Ghostty, kept on the `moestty` branch of
 the `fork` remote and rebased onto upstream `main`.
 
-Build: `zig build` (needs Zig 0.16.x), then run `zig-out/Ghostty.app`.
+Build: `zig build` (needs the Zig minor version in `build.zig.zon`'s
+`minimum_zig_version`; the script checks it), then run `zig-out/Ghostty.app`.
 
 Install as the daily app: `./moestty-build.sh`. It builds ReleaseFast,
 copies the app to `/Applications/Moestty.app` and fixes its LaunchServices

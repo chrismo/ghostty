@@ -23,7 +23,21 @@ version_re='^const moestty_version = "([0-9.]+)";$'
 app=/Applications/Moestty.app
 lsregister=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
 
+# Upstream bumps Zig's minor version now and then (0.16 to 0.17 in Ghostty
+# 1.4), and building with the old one fails with a confusing error.
+require_zig() {
+  local want have
+  want=$(sed -nE 's/.*minimum_zig_version = "([0-9]+\.[0-9]+)\..*/\1/p' build.zig.zon)
+  have=$(zig version 2>/dev/null | sed -nE 's/^([0-9]+\.[0-9]+)\..*/\1/p')
+  if [[ $have != "$want" ]]; then
+    echo "Ghostty needs Zig $want.x, but zig is ${have:-missing}." >&2
+    echo "With Homebrew: brew install zig@$want (or zig, if stable is $want), then brew link --overwrite --force it." >&2
+    exit 1
+  fi
+}
+
 build() {
+  require_zig
   zig build -Doptimize=ReleaseFast
 }
 
